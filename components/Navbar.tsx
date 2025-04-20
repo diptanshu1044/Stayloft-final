@@ -58,7 +58,7 @@ const Navbar = () => {
 
   return (
     <header 
-      className="fixed top-0 left-0 right-0 z-50 transition-all duration-300  shadow-md py-2 bg-background"
+      className="sticky top-0 left-0 right-0 z-50 transition-all duration-300  shadow-md py-2 bg-background"
     >
       <div className="container flex items-center justify-between">
         {/* Logo */}
