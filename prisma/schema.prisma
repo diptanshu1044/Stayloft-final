@@ -1,0 +1,129 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  TENANT
+  OWNER
+  ADMIN
+}
+
+model User {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  clerkId  String   @unique
+  name     String
+  username String   @unique
+  email    String   @unique
+  role     Role     @default(TENANT)
+  image    String?
+  booking  Booking?
+
+  properties Property[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  Review     Review[]
+}
+
+enum PropertyType {
+  PG
+  FLAT
+  HOSTEL
+}
+
+enum TenantType {
+  BOYS
+  GIRLS
+  COED
+}
+
+enum RoomType {
+  SINGLE
+  DOUBLE
+  TRIPLE
+  BHK1
+  BHK2
+  BHK3
+  CUSTOM
+}
+
+enum Features {
+  AC
+  TV
+  WIFI
+  MESS
+  LAUNDRY
+  PARKING
+  SECURITY
+  IN_TIME
+}
+
+enum Status {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+model Property {
+  id         String       @id @default(auto()) @map("_id") @db.ObjectId
+  name       String
+  type       PropertyType
+  location   String
+  TenantType TenantType
+  rooms      Room[]
+  features   Features[]
+  bookings   Booking[]
+  reviews    String[]
+
+  ownerId String   @db.ObjectId
+  owner   User     @relation(fields: [ownerId], references: [id])
+  Review  Review[]
+}
+
+model Room {
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  name       String
+  type       RoomType
+  price      Int
+  capacity   Int
+  propertyId String    @db.ObjectId
+  property   Property  @relation(fields: [propertyId], references: [id])
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  Booking    Booking[]
+}
+
+model Booking {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  roomId        String    @db.ObjectId
+  room          Room      @relation(fields: [roomId], references: [id])
+  tenantId      String    @unique @db.ObjectId
+  tenant        User      @relation(fields: [tenantId], references: [id])
+  bookingStatus Status
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  Property      Property? @relation(fields: [propertyId], references: [id])
+  propertyId    String?   @db.ObjectId
+}
+
+model Review {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  rating     Int
+  comment    String?
+  propertyId String   @db.ObjectId
+  property   Property @relation(fields: [propertyId], references: [id])
+  userId     String   @db.ObjectId
+  user       User     @relation(fields: [userId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}

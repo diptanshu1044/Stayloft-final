@@ -100,7 +100,7 @@ const HeroSection = () => {
           </div>
 
           {/* Quick Stats */}
-          <div className="flex flex-wrap gap-8 mt-12 text-foreground">
+          <div className="flex flex-wrap gap-8 mt-12 text-white">
             <div>
               <p className="text-3xl font-bold">1500+</p>
               <p className="text-muted-foreground">Accommodations</p>

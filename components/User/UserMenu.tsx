@@ -41,7 +41,7 @@ interface UserMenuProps {
 
 export function UserMenu({ userType = "TENANT", userName = "User", userImage }: UserMenuProps) {
   const { setTheme, theme } = useTheme();
-  const dashboardPath = userType === "OWNER" ? "/dashboard" : "/user-dashboard";
+  const dashboardPath = userType === "OWNER" ? "/dashboard" : "/user-dashboard/saved-properties";
   const initials = userName.split(" ").map(n => n[0]).join("").toUpperCase();
   
   const [storedAvatar, setStoredAvatar] = useState<string | null>(null);
