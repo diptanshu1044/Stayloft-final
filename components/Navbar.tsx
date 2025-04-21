@@ -8,18 +8,46 @@ import { useEffect, useState } from "react";
 import { ModeToggle } from "@/components/ModeToggle";
 import { UserMenu } from "@/components/User/UserMenu";
 import { UserRole } from "@/types";
-import { SignedIn, SignedOut, useAuth, useClerk, UserButton } from "@clerk/nextjs";
+import {
+  SignedIn,
+  SignedOut,
+  useAuth,
+  useClerk,
+  UserButton,
+} from "@clerk/nextjs";
+import axios from "axios";
+import { toast } from "sonner";
+import { User } from "@prisma/client";
 
 const Navbar = () => {
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const router = useRouter();
   const { signOut } = useClerk();
-  const auth = useAuth()
-  
+  const auth = useAuth();
 
   useEffect(() => {
-    console.log("Auth state changed:", auth);
-  }, [auth])
+    const fetchUser = async () => {
+      setLoading(true);
+      try {
+        const res = await axios.get("/api/user");
+        if (!res.status) {
+          toast.error("Failed to fetch user data");
+        }
+        setUser(res.data.user);
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUser();
+  }, []);
+
+  useEffect(() => {
+    console.log("User data changed:", user);
+  }, [user]);
 
   const handleLogin = () => {
     router.push("/login");
@@ -70,19 +98,18 @@ const Navbar = () => {
         <div className="hidden md:flex items-center gap-4">
           <ModeToggle />
           <SignedIn>
-            <UserMenu userType={"TENANT"} userName={"John Doe"} />
-            {/* <UserButton /> */}
-              <Button variant="ghost" onClick={() => signOut()}>
-                Sign Out
-              </Button>
-            {/* {userType === "OWNER" && ( */}
+            <UserMenu userType={user?.role} userName={user?.name} />
+            <Button variant="ghost" onClick={() => signOut()}>
+              Sign Out
+            </Button>
+            {user?.role === "OWNER" && (
               <Button className="flex items-center gap-2" asChild>
                 <Link href="/dashboard/add-property">
                   <Home className="h-5 w-5" />
                   List Property
                 </Link>
               </Button>
-            {/* )} */}
+            )}
           </SignedIn>
           <SignedOut>
             <Button

@@ -10,7 +10,7 @@ const UserDashboardLayout = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <>
-      <div className="bg-gray-50 min-h-screen py-8">
+      <div className="bg-gray-50 min-h-screen py-8" suppressHydrationWarning>
         <div className="container">
           <div className="flex flex-col lg:flex-row gap-8">
             <UserDashboardSidebar 

@@ -71,7 +71,7 @@ export type Amenity =
   | "FURNISHED"
   | "WASHING_MACHINE";
 
-export type UserRole = "TENANT" | "OWNER" | "ADMIN";
+export type UserRole = "NONE" | "TENANT" | "OWNER" | "ADMIN";
 
 export type ThemeType = "light" | "dark" | "system";
 

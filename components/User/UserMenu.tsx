@@ -32,6 +32,7 @@ import { Button } from "@/components/ui/button"
 import { useTheme } from "next-themes"
 import { UserRole, ThemeType } from "@/types"
 import { useEffect, useState } from "react"
+import { useClerk } from "@clerk/nextjs"
 
 interface UserMenuProps {
   userType?: UserRole;
@@ -41,10 +42,11 @@ interface UserMenuProps {
 
 export function UserMenu({ userType = "TENANT", userName = "User", userImage }: UserMenuProps) {
   const { setTheme, theme } = useTheme();
-  const dashboardPath = userType === "OWNER" ? "/dashboard" : "/user-dashboard/saved-properties";
+  const dashboardPath = userType === "OWNER" ? "/dashboard" : "/user-dashboard/";
   const initials = userName.split(" ").map(n => n[0]).join("").toUpperCase();
   
   const [storedAvatar, setStoredAvatar] = useState<string | null>(null);
+  const { signOut } = useClerk();
   
   useEffect(() => {
     // Get avatar from localStorage if available
@@ -151,7 +153,7 @@ export function UserMenu({ userType = "TENANT", userName = "User", userImage }: 
             localStorage.removeItem("userRole");
           }}
         >
-          <Link href="/login" className="text-red-600">
+          <Link className="text-red-600" onClick={() => signOut()} href="/">
             <LogOut className="mr-2 h-4 w-4" />
             Log out
           </Link>

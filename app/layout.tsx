@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { ClerkProvider } from "@clerk/nextjs";
+import UserTypeModal from "@/components/UserTypeModal";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
