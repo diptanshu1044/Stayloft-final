@@ -171,3 +171,11 @@ export interface VerificationDocument {
 }
 
 export type Language = "English" | "Hindi" | "Tamil" | "Telugu" | "Kannada" | "Malayalam" | "Bengali" | "Marathi" | "Gujarati";
+
+
+export type RoomAvailability = {
+  roomType: string;
+  totalBeds: number;
+  availableBeds: number;
+  isActive: boolean;
+};
