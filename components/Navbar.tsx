@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Building, Home, Menu, X } from "lucide-react";
+import { Home, Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ModeToggle } from "@/components/ModeToggle";
 import { UserMenu } from "@/components/User/UserMenu";
@@ -18,6 +18,7 @@ import {
 import axios from "axios";
 import { toast } from "sonner";
 import { User } from "@prisma/client";
+import Logo from "@/components/Logo";
 
 const Navbar = () => {
   const [loading, setLoading] = useState(true);
@@ -62,7 +63,7 @@ const Navbar = () => {
       <div className="container flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
-          <Building className="h-8 w-8 text-primary" />
+          <Logo />
           <span className="font-bold text-xl">StayLoft</span>
         </Link>
 
