@@ -479,59 +479,6 @@ const OwnerProfileTab = () => {
                     />
                   </div>
                 </div>
-                
-                <div className="pt-4 border-t">
-                  <h3 className="text-lg font-medium mb-3">Notification Types</h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <Label htmlFor="new-messages">New Messages</Label>
-                        <p className="text-muted-foreground text-sm">Get notified when you receive new messages</p>
-                      </div>
-                      <Switch 
-                        id="new-messages" 
-                        checked={userData.notificationPreferences.newMessages}
-                        onCheckedChange={(checked) => handleNotificationChange("newMessages", checked)}
-                      />
-                    </div>
-                    
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <Label htmlFor="booking-updates">Booking Updates</Label>
-                        <p className="text-muted-foreground text-sm">Get notified about your booking status changes</p>
-                      </div>
-                      <Switch 
-                        id="booking-updates" 
-                        checked={userData.notificationPreferences.bookingUpdates}
-                        onCheckedChange={(checked) => handleNotificationChange("bookingUpdates", checked)}
-                      />
-                    </div>
-                    
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <Label htmlFor="payment-reminders">Payment Reminders</Label>
-                        <p className="text-muted-foreground text-sm">Get reminded about upcoming payment dues</p>
-                      </div>
-                      <Switch 
-                        id="payment-reminders" 
-                        checked={userData.notificationPreferences.paymentReminders}
-                        onCheckedChange={(checked) => handleNotificationChange("paymentReminders", checked)}
-                      />
-                    </div>
-                    
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <Label htmlFor="promotions">Promotions & Offers</Label>
-                        <p className="text-muted-foreground text-sm">Receive updates about discounts and special offers</p>
-                      </div>
-                      <Switch 
-                        id="promotions" 
-                        checked={userData.notificationPreferences.promotions}
-                        onCheckedChange={(checked) => handleNotificationChange("promotions", checked)}
-                      />
-                    </div>
-                  </div>
-                </div>
               </div>
               
               <div className="pt-4">
