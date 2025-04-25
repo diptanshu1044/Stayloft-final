@@ -15,21 +15,36 @@ const UserDashboardSidebar = ({ activeTab, setActiveTab, unreadMessages }: UserD
   const router = useRouter();
   const [userName, setUserName] = useState("User");
   const [userAvatar, setUserAvatar] = useState("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get user name and avatar from localStorage
-    const storedUserName = localStorage.getItem("userName");
-    const storedUserAvatar = localStorage.getItem("userAvatar");
-    
-    if (storedUserName) {
-      setUserName(storedUserName);
-    }
-    
-    if (storedUserAvatar) {
-      setUserAvatar(storedUserAvatar);
-    }
-    
-    // Listen for storage events to update avatar if changed in another tab
+    const fetchUserData = async () => {
+      try {
+        const response = await fetch('/api/user');
+        const data = await response.json();
+        
+        if (data.status === 200 && data.user) {
+          setUserName(data.user.name || "User");
+          setUserAvatar(data.user.image || "");
+          
+          // Update localStorage
+          localStorage.setItem("userName", data.user.name || "User");
+          if (data.user.image) {
+            localStorage.setItem("userAvatar", data.user.image);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
+  // Listen for storage events to update avatar if changed in another tab
+  useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "userAvatar") {
         setUserAvatar(e.newValue || "");

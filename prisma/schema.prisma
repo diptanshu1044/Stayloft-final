@@ -26,8 +26,14 @@ model User {
   name     String
   username String   @unique
   email    String   @unique
+  phone    String?
+  address  String?
+  bio      String?
   role     Role     @default(NONE)
   image    String?
+  language String?  @default("English")
+  theme    String?  @default("system")
+  notifications Json?  @default("{\"email\":true,\"push\":true,\"sms\":false,\"newMessages\":true,\"bookingUpdates\":true,\"paymentReminders\":true,\"promotions\":false}")
   booking  Booking?
 
   properties Property[]

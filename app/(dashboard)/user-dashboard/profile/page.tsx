@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,22 +14,27 @@ import { ModeToggle } from "@/components/ModeToggle";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/useToast";
 import { Language } from "@/types";
+import { updateProfile } from "@/actions/profile.action";
+import { useRouter } from "next/navigation";
 
 const ProfileTab = () => {
   const [activeTab, setActiveTab] = useState("personal");
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
   
-  // Mock user data - in a real app, this would come from API calls
+  // Initialize user data with empty values
   const [userData, setUserData] = useState({
-    name: localStorage.getItem("userName") || "Alex Johnson",
-    email: localStorage.getItem("userEmail") || "alex.johnson@example.com",
-    phone: "+91 9876543210",
-    address: "123 Main St, Bangalore",
-    bio: "Looking for a comfortable place to stay near my workplace.",
-    avatar: localStorage.getItem("userAvatar") || "",
-    language: localStorage.getItem("userLanguage") || "English",
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+    bio: "",
+    avatar: "",
+    language: "English",
+    theme: "system",
     notificationPreferences: {
       email: true,
       push: true,
@@ -40,6 +45,49 @@ const ProfileTab = () => {
       promotions: false
     }
   });
+
+  // Fetch user data on component mount
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const response = await fetch('/api/user');
+        const data = await response.json();
+        
+        if (data.status === 200 && data.user) {
+          setUserData(prev => ({
+            ...prev,
+            name: data.user.name || "",
+            email: data.user.email || "",
+            phone: data.user.phone || "",
+            address: data.user.address || "",
+            bio: data.user.bio || "",
+            avatar: data.user.image || "",
+            language: data.user.language || "English",
+            theme: data.user.theme || "system",
+            notificationPreferences: data.user.notifications ? JSON.parse(data.user.notifications) : prev.notificationPreferences
+          }));
+          
+          // Update localStorage with user data
+          localStorage.setItem("userName", data.user.name || "");
+          localStorage.setItem("userEmail", data.user.email || "");
+          if (data.user.image) {
+            localStorage.setItem("userAvatar", data.user.image);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch user data. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, [toast]);
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -67,18 +115,63 @@ const ProfileTab = () => {
     localStorage.setItem("userLanguage", value);
   };
   
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, you would save the profile data to your backend
     
-    // For demo purposes, save to localStorage
-    localStorage.setItem("userName", userData.name);
-    localStorage.setItem("userEmail", userData.email);
-    
-    toast({
-      title: "Profile updated",
-      description: "Your profile has been updated successfully."
-    });
+    try {
+      const result = await updateProfile({
+        name: userData.name,
+        email: userData.email,
+        phone: userData.phone,
+        address: userData.address,
+        bio: userData.bio,
+        language: userData.language,
+        theme: userData.theme,
+        notifications: userData.notificationPreferences
+      });
+
+      if (result.success) {
+        // Update localStorage with new data
+        localStorage.setItem("userName", userData.name);
+        localStorage.setItem("userEmail", userData.email);
+        
+        // Show success message
+        toast({
+          title: "Success",
+          description: result.message || "Your profile has been updated successfully.",
+          variant: "default"
+        });
+
+window.location.reload()
+
+        if (result.user) {
+          setUserData(prev => ({
+            ...prev,
+            name: result.user.name,
+            email: result.user.email,
+            phone: result.user.phone || "",
+            address: result.user.address || "",
+            bio: result.user.bio || "",
+            language: result.user.language || "English",
+            theme: result.user.theme || "system",
+            notificationPreferences: result.user.notifications || prev.notificationPreferences
+          }));
+        }
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to update profile. Please try again.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
   
   const handleAvatarClick = () => {
