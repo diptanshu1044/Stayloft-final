@@ -6,7 +6,7 @@ import { Settings } from "lucide-react";
 import { mockFlats, mockPGs, mockHostels } from "@/lib/MockData";
 import DashboardSidebar from "@/components/Dashboard/DashboardSidebar";
 import PropertiesTab from "@/components/Dashboard/PropertiesTab";
-import ComingSoonTab from "@/components/Dashboard/ComingSoomTab";
+import OwnerProfileTab from "./profile/page";
 
 const DashboardPage = () => {
   const [loading, setLoading] = useState(false);
@@ -61,7 +61,7 @@ const DashboardPage = () => {
                 <PropertiesTab properties={properties} />
               )}
               {activeTab === "settings" && (
-                <ComingSoonTab title="Account Settings" Icon={Settings} />
+                <OwnerProfileTab />
               )}
             </div>
           </div>

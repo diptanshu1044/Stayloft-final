@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Building, MessageSquare, Settings, HelpCircle } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Building2, MessageSquare, History, Calendar, CreditCard, Settings, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 
 interface DashboardSidebarProps {
@@ -12,15 +14,74 @@ interface DashboardSidebarProps {
 }
 
 const DashboardSidebar = ({ activeTab, setActiveTab, unreadMessages }: DashboardSidebarProps) => {
+  const router = useRouter();
+  const [userName, setUserName] = useState("User");
+  const [userAvatar, setUserAvatar] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const response = await fetch('/api/user');
+        const data = await response.json();
+        
+        if (data.status === 200 && data.user) {
+          setUserName(data.user.name || "User");
+          setUserAvatar(data.user.image || "");
+          
+          // Update localStorage
+          localStorage.setItem("userName", data.user.name || "User");
+          if (data.user.image) {
+            localStorage.setItem("userAvatar", data.user.image);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
+  // Listen for storage events to update avatar if changed in another tab
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "userAvatar") {
+        setUserAvatar(e.newValue || "");
+      } else if (e.key === "userName") {
+        setUserName(e.newValue || "User");
+      }
+    };
+    
+    window.addEventListener("storage", handleStorageChange);
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, []);
+
+  const handleNavigation = (tab: string) => {
+    setActiveTab(tab);
+    if (tab === "settings") {
+      router.push("/dashboard/profile");
+    } else {
+      router.push(`/dashboard/${tab}`);
+    }
+  };
+
+  const initials = userName.split(" ").map(n => n[0]).join("").toUpperCase();
+
   return (
     <div className="lg:w-1/4">
       <div className="bg-white rounded-lg shadow-xs border p-4 mb-4">
         <div className="flex items-center gap-4 mb-4 pb-4 border-b">
-          <div className="h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center">
-            <Building className="h-6 w-6 text-primary" />
-          </div>
+          <Avatar className="h-12 w-12">
+            <AvatarImage src={userAvatar} alt={userName} />
+            <AvatarFallback className="bg-primary/10">{initials}</AvatarFallback>
+          </Avatar>
           <div>
-            <h3 className="font-semibold">John Doe</h3>
+            <h3 className="font-semibold">{userName}</h3>
             <p className="text-sm text-gray-600">Property Owner</p>
           </div>
         </div>
@@ -30,15 +91,17 @@ const DashboardSidebar = ({ activeTab, setActiveTab, unreadMessages }: Dashboard
             className={`flex items-center gap-2 w-full px-3 py-2 rounded-md text-left ${
               activeTab === "properties" ? "bg-primary/10 text-primary font-medium" : "text-gray-700 hover:bg-gray-100"
             }`}
-            onClick={() => setActiveTab("properties")}
+            onClick={() => handleNavigation("properties")}
           >
-            <Building className="h-5 w-5" />
+            <Building2 className="h-5 w-5" />
             <span>My Properties</span>
           </button>
           
-          <Link 
-            href="/chat/support"
-            className={`flex items-center gap-2 w-full px-3 py-2 rounded-md text-left text-gray-700 hover:bg-gray-100`}
+          <button 
+            className={`flex items-center gap-2 w-full px-3 py-2 rounded-md text-left ${
+              activeTab === "chats" ? "bg-primary/10 text-primary font-medium" : "text-gray-700 hover:bg-gray-100"
+            }`}
+            onClick={() => router.push("/chat/support")}
           >
             <div className="relative">
               <MessageSquare className="h-5 w-5" />
@@ -49,16 +112,16 @@ const DashboardSidebar = ({ activeTab, setActiveTab, unreadMessages }: Dashboard
               )}
             </div>
             <span>Messages</span>
-          </Link>
+          </button>
           
           <button 
             className={`flex items-center gap-2 w-full px-3 py-2 rounded-md text-left ${
               activeTab === "settings" ? "bg-primary/10 text-primary font-medium" : "text-gray-700 hover:bg-gray-100"
             }`}
-            onClick={() => setActiveTab("settings")}
+            onClick={() => handleNavigation("settings")}
           >
             <Settings className="h-5 w-5" />
-            <span>Settings</span>
+            <span>Profile Settings</span>
           </button>
         </nav>
       </div>
@@ -70,7 +133,6 @@ const DashboardSidebar = ({ activeTab, setActiveTab, unreadMessages }: Dashboard
         </p>
         <Button variant="outline" className="w-full" asChild>
           <Link href="/dashboard/support">
-            <HelpCircle className="mr-2 h-4 w-4" />
             Contact Support
           </Link>
         </Button>
