@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import PropertyGrid from "@/components/Properties/PropertyGrid";
-import { Property, PropertyType } from "@/types";
-import { getPropertiesByType } from "@/lib/MockData";
+import { Property } from "@/types";
+import { PropertyType } from "@prisma/client";
+import { getPropertiesByTypeWithPagination } from "@/actions/property.action";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
@@ -33,9 +34,10 @@ const PropertyListingPage = ({ propertyType }: PropertyListingPageProps) => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [properties, setProperties] = useState<Property[]>([]);
-  const [filteredProperties, setFilteredProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFilterMobileOpen, setIsFilterMobileOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   // Filter states
   const [priceRange, setPriceRange] = useState<number[]>([0, 50000]);
@@ -67,95 +69,64 @@ const PropertyListingPage = ({ propertyType }: PropertyListingPageProps) => {
   const amenities = [
     { id: "WIFI", label: "WiFi" },
     { id: "AC", label: "Air Conditioning" },
-    { id: "FURNISHED", label: "Furnished" },
     { id: "TV", label: "TV" },
-    { id: "FRIDGE", label: "Refrigerator" },
-    { id: "WASHING_MACHINE", label: "Washing Machine" },
     { id: "PARKING", label: "Parking" },
     { id: "SECURITY", label: "Security" },
-    { id: "FOOD", label: "Food Included" },
-    { id: "CLEANING", label: "Cleaning Service" },
-    { id: "GYM", label: "Gym" },
+    { id: "MESS", label: "Mess" },
+    { id: "LAUNDRY", label: "Laundry" },
   ];
 
-  useEffect(() => {
-    // Fetch properties
+  const fetchProperties = async (page: number) => {
     setLoading(true);
+    try {
+      const filters = {
+        minPrice: priceRange[0],
+        maxPrice: priceRange[1],
+        city: selectedCity !== "all" ? selectedCity : undefined,
+        amenities: selectedAmenities.length > 0 ? selectedAmenities : undefined,
+      };
 
-    // Simulate API fetch delay
-    setTimeout(() => {
-      const fetchedProperties = getPropertiesByType(propertyType);
-      setProperties(fetchedProperties);
-      setFilteredProperties(fetchedProperties);
+      const result = await getPropertiesByTypeWithPagination(
+        propertyType,
+        page,
+        10,
+        filters
+      );
 
-      // Set initial price range based on fetched properties
-      if (fetchedProperties.length > 0) {
-        const minPrice = Math.min(...fetchedProperties.map((p) => p.price));
-        const maxPrice = Math.max(...fetchedProperties.map((p) => p.price));
-        setPriceRange([minPrice, maxPrice]);
+      if (result) {
+        setProperties(result.properties || []);
+        setTotalPages(result.totalPages || 1);
+        setCurrentPage(result.currentPage || 1);
+      } else {
+        setProperties([]);
+        setTotalPages(1);
+        setCurrentPage(1);
       }
-
+    } catch (error) {
+      console.error("Error fetching properties:", error);
+      setProperties([]);
+      setTotalPages(1);
+      setCurrentPage(1);
+    } finally {
       setLoading(false);
-    }, 800);
-  }, [propertyType]);
+    }
+  };
 
-  // Apply filters
   useEffect(() => {
-    let result = [...properties];
+    let mounted = true;
 
-    // Filter by price range
-    result = result.filter(
-      (property) =>
-        property.price >= priceRange[0] && property.price <= priceRange[1],
-    );
+    const loadProperties = async () => {
+      if (mounted) {
+        await fetchProperties(currentPage);
+      }
+    };
 
-    // Filter by search term
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      result = result.filter(
-        (property) =>
-          property.title.toLowerCase().includes(term) ||
-          property.description.toLowerCase().includes(term) ||
-          property.location.city.toLowerCase().includes(term) ||
-          property.location.address?.toLowerCase().includes(term),
-      );
-    }
+    loadProperties();
 
-    // Filter by city
-    if (selectedCity && selectedCity !== "all") {
-      result = result.filter(
-        (property) =>
-          property.location.city.toLowerCase() === selectedCity.toLowerCase(),
-      );
-    }
-
-    // Filter by amenities
-    if (selectedAmenities.length > 0) {
-      result = result.filter((property) =>
-        selectedAmenities.every((amenity) =>
-          property.amenities.includes(amenity as any),
-        ),
-      );
-    }
-
-    // Apply sorting
-    if (sortOption === "price_low") {
-      result.sort((a, b) => a.price - b.price);
-    } else if (sortOption === "price_high") {
-      result.sort((a, b) => b.price - a.price);
-    } else if (sortOption === "rating") {
-      result.sort((a, b) => (b.ratings || 0) - (a.ratings || 0));
-    }
-
-    setFilteredProperties(result);
-  }, [
-    properties,
-    priceRange,
-    searchTerm,
-    selectedCity,
-    selectedAmenities,
-    sortOption,
-  ]);
+    return () => {
+      mounted = false;
+    };
+  }, [propertyType, currentPage, priceRange, selectedCity, selectedAmenities]);
 
   const handleAmenityChange = (amenityId: string, checked: boolean) => {
     setSelectedAmenities((prev) =>
@@ -165,13 +136,8 @@ const PropertyListingPage = ({ propertyType }: PropertyListingPageProps) => {
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
-    const params = new URLSearchParams();
-
-    if (searchTerm) params.set("location", searchTerm);
-    if (selectedCity !== "all") params.set("city", selectedCity);
-
-    router.push(`?${params.toString()}`);
+    setCurrentPage(1);
+    fetchProperties(1);
   };
 
   const handleClearFilters = () => {
@@ -179,12 +145,9 @@ const PropertyListingPage = ({ propertyType }: PropertyListingPageProps) => {
     setSelectedCity("all");
     setSelectedAmenities([]);
     setSortOption("recommended");
-    if (properties.length > 0) {
-      const minPrice = Math.min(...properties.map((p) => p.price));
-      const maxPrice = Math.max(...properties.map((p) => p.price));
-      setPriceRange([minPrice, maxPrice]);
-    }
-    router.push(window.location.pathname);
+    setPriceRange([0, 50000]);
+    setCurrentPage(1);
+    fetchProperties(1);
   };
 
   const toggleMobileFilter = () => {
@@ -250,136 +213,131 @@ const PropertyListingPage = ({ propertyType }: PropertyListingPageProps) => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="recommended">Recommended</SelectItem>
-                    <SelectItem value="price_low">
-                      Price: Low to High
-                    </SelectItem>
-                    <SelectItem value="price_high">
-                      Price: High to Low
-                    </SelectItem>
-                    <SelectItem value="rating">Highest Rated</SelectItem>
+                    <SelectItem value="price_low">Price: Low to High</SelectItem>
+                    <SelectItem value="price_high">Price: High to Low</SelectItem>
+                    <SelectItem value="rating">Rating</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="flex gap-2">
-                <Button type="submit">Search</Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="md:hidden"
-                  onClick={toggleMobileFilter}
-                >
-                  <SlidersHorizontal className="h-5 w-5" />
-                </Button>
-              </div>
+              <Button type="submit">Search</Button>
             </form>
           </div>
 
-          <div className="flex flex-col lg:flex-row gap-8">
-            {/* Filter Sidebar - Desktop */}
-            <div
-              className={`lg:w-1/4 ${isFilterMobileOpen ? "block" : "hidden"} lg:block`}
+          {/* Mobile Filter Toggle */}
+          <div className="md:hidden mb-4">
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={toggleMobileFilter}
             >
-              <div className="bg-white rounded-lg shadow-xs p-6 sticky top-24">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-semibold">Filters</h3>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-sm h-8 px-2"
-                      onClick={handleClearFilters}
-                    >
-                      Clear All
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="lg:hidden"
-                      onClick={toggleMobileFilter}
-                    >
-                      <X className="h-5 w-5" />
-                    </Button>
-                  </div>
-                </div>
+              <SlidersHorizontal className="mr-2 h-4 w-4" />
+              Filters
+            </Button>
+          </div>
 
-                <Accordion
-                  type="multiple"
-                  defaultValue={["price", "amenities"]}
+          <div className="flex flex-col md:flex-row gap-8">
+            {/* Filters Sidebar */}
+            <div
+              className={`${isFilterMobileOpen ? "block" : "hidden"
+                } md:block w-full md:w-64 bg-white rounded-lg shadow-xs p-4`}
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="font-semibold">Filters</h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearFilters}
                 >
-                  <AccordionItem value="price">
-                    <AccordionTrigger>Price Range</AccordionTrigger>
-                    <AccordionContent>
-                      <div className="space-y-4">
-                        <Slider
-                          value={priceRange}
-                          min={0}
-                          max={50000}
-                          step={500}
-                          onValueChange={setPriceRange}
-                        />
-                        <div className="flex items-center justify-between">
-                          <span>₹{priceRange[0].toLocaleString()}</span>
-                          <span>₹{priceRange[1].toLocaleString()}</span>
-                        </div>
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-
-                  <AccordionItem value="amenities">
-                    <AccordionTrigger>Amenities</AccordionTrigger>
-                    <AccordionContent>
-                      <div className="space-y-3">
-                        {amenities.map((amenity) => (
-                          <div
-                            key={amenity.id}
-                            className="flex items-center gap-2"
-                          >
-                            <Checkbox
-                              id={`amenity-${amenity.id}`}
-                              checked={selectedAmenities.includes(amenity.id)}
-                              onCheckedChange={(checked) =>
-                                handleAmenityChange(
-                                  amenity.id,
-                                  checked as boolean,
-                                )
-                              }
-                            />
-                            <Label htmlFor={`amenity-${amenity.id}`}>
-                              {amenity.label}
-                            </Label>
-                          </div>
-                        ))}
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
+                  Clear all
+                </Button>
               </div>
+
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="price">
+                  <AccordionTrigger>Price Range</AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-4">
+                      <Slider
+                        value={priceRange}
+                        onValueChange={setPriceRange}
+                        min={0}
+                        max={50000}
+                        step={1000}
+                      />
+                      <div className="flex justify-between text-sm text-gray-600">
+                        <span>₹{priceRange[0]}</span>
+                        <span>₹{priceRange[1]}</span>
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="amenities">
+                  <AccordionTrigger>Amenities</AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-2">
+                      {amenities.map((amenity) => (
+                        <div
+                          key={amenity.id}
+                          className="flex items-center space-x-2"
+                        >
+                          <Checkbox
+                            id={amenity.id}
+                            checked={selectedAmenities.includes(amenity.id)}
+                            onCheckedChange={(checked) =>
+                              handleAmenityChange(amenity.id, checked as boolean)
+                            }
+                          />
+                          <Label htmlFor={amenity.id}>{amenity.label}</Label>
+                        </div>
+                      ))}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </div>
 
-            {/* Property Listings */}
-            <div className="lg:w-3/4">
-              <div className="mb-4 flex items-center justify-between">
-                <p className="text-gray-600">
-                  {filteredProperties.length}{" "}
-                  {filteredProperties.length === 1 ? "property" : "properties"}{" "}
-                  found
-                </p>
-                {(selectedAmenities.length > 0 ||
-                  selectedCity !== "all" ||
-                  searchTerm) && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleClearFilters}
-                  >
-                    <X className="h-4 w-4 mr-2" />
-                    Clear Filters
-                  </Button>
-                )}
-              </div>
+            {/* Property Grid */}
+            <div className="flex-1">
+              {loading ? (
+                <div className="text-center py-8">Loading...</div>
+              ) : properties.length === 0 ? (
+                <div className="text-center py-8">
+                  No properties found matching your criteria
+                </div>
+              ) : (
+                <>
+                  <PropertyGrid properties={properties} />
 
-              <PropertyGrid properties={filteredProperties} loading={loading} />
+                  {/* Pagination */}
+                  <div className="flex justify-center mt-8 gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setCurrentPage((prev) => Math.max(prev - 1, 1));
+                      }}
+                      disabled={currentPage === 1}
+                    >
+                      Previous
+                    </Button>
+                    <span className="flex items-center px-4">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setCurrentPage((prev) =>
+                          Math.min(prev + 1, totalPages)
+                        );
+                      }}
+                      disabled={currentPage === totalPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

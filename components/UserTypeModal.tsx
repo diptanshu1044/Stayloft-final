@@ -24,9 +24,19 @@ export default function UserTypeModal() {
   }, [])
 
   const handleSelectRole = async (role: "TENANT" | "OWNER") => {
-    await updateUserRole(role)
-    setOpen(false)
-    router.refresh() // 🔄 Refresh the current route (e.g. to re-trigger layout/server component logic)
+    try {
+      const result = await updateUserRole(role);
+      if (result.success) {
+        setOpen(false);
+        router.refresh();
+      } else {
+        console.error("Failed to update role:", result.error);
+        // You might want to show an error toast here
+      }
+    } catch (error) {
+      console.error("Error updating role:", error);
+      // You might want to show an error toast here
+    }
   }
 
   if (loading) return null
@@ -38,9 +48,9 @@ export default function UserTypeModal() {
           <DialogTitle>Select your user type</DialogTitle>
         </DialogHeader>
         <div className="flex justify-center gap-4 mt-4">
-          <Button onClick={() => handleSelectRole("TENANT")}>I’m a Tenant</Button>
+          <Button onClick={() => handleSelectRole("TENANT")}>I'm a Tenant</Button>
           <Button onClick={() => handleSelectRole("OWNER")} variant="secondary">
-            I’m an Owner
+            I'm an Owner
           </Button>
         </div>
       </DialogContent>

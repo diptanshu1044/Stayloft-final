@@ -288,11 +288,10 @@ const PropertyDetailPage = () => {
               <div className="flex items-center gap-3">
                 <button
                   onClick={toggleFavorite}
-                  className={`p-2 rounded-full ${
-                    isFavorite
+                  className={`p-2 rounded-full ${isFavorite
                       ? "bg-red-50 text-red-500"
                       : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                  }`}
+                    }`}
                   aria-label={
                     isFavorite ? "Remove from favorites" : "Add to favorites"
                   }

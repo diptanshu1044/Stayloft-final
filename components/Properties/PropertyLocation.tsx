@@ -10,29 +10,15 @@ interface PropertyLocationProps {
 
 const PropertyLocation = ({ form }: PropertyLocationProps) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="space-y-6">
       <FormField
         control={form.control}
-        name="location.city"
+        name="location"
         render={({ field }) => (
           <FormItem>
             <FormLabel>City</FormLabel>
             <FormControl>
               <Input placeholder="e.g. Bangalore" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      
-      <FormField
-        control={form.control}
-        name="location.area"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Area/Locality</FormLabel>
-            <FormControl>
-              <Input placeholder="e.g. Koramangala" {...field} />
             </FormControl>
             <FormMessage />
           </FormItem>

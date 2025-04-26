@@ -58,13 +58,16 @@ export async function updateUserRole(newRole: "TENANT" | "OWNER") {
     const { userId } = await auth();
     if (!userId) throw new Error("Unauthorized");
 
-    await prisma.user.update({
+    const updatedUser = await prisma.user.update({
       where: { clerkId: userId },
       data: { role: newRole },
+      select: { role: true }
     });
 
     revalidatePath("/");
+    return { success: true, role: updatedUser.role };
   } catch (err) {
-    console.log(err);
+    console.error("Error updating user role:", err);
+    return { success: false, error: "Failed to update user role" };
   }
 }

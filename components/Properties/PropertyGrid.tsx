@@ -17,7 +17,19 @@ const PropertyGrid = ({ properties, loading = false }: PropertyGridProps) => {
     );
   }
 
-  if (properties.length === 0) {
+  // Ensure properties is an array and validate each property
+  const validProperties = Array.isArray(properties)
+    ? properties.filter((property): property is Property =>
+      property !== null &&
+      typeof property === 'object' &&
+      'id' in property &&
+      typeof property.id === 'string' &&
+      'name' in property &&
+      typeof property.name === 'string'
+    )
+    : [];
+
+  if (validProperties.length === 0) {
     return (
       <div className="text-center py-12">
         <h3 className="text-lg font-medium text-gray-600">No properties found</h3>
@@ -30,7 +42,7 @@ const PropertyGrid = ({ properties, loading = false }: PropertyGridProps) => {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {properties.map((property) => (
+      {validProperties.map((property) => (
         <PropertyCard key={property.id} property={property} />
       ))}
     </div>

@@ -26,14 +26,8 @@ model User {
   name     String
   username String   @unique
   email    String   @unique
-  phone    String?
-  address  String?
-  bio      String?
   role     Role     @default(NONE)
   image    String?
-  language String?  @default("English")
-  theme    String?  @default("system")
-  notifications Json?  @default("{\"email\":true,\"push\":true,\"sms\":false,\"newMessages\":true,\"bookingUpdates\":true,\"paymentReminders\":true,\"promotions\":false}")
   booking  Booking?
 
   properties Property[]
@@ -82,32 +76,47 @@ enum Status {
 }
 
 model Property {
-  id         String       @id @default(auto()) @map("_id") @db.ObjectId
-  name       String
-  type       PropertyType
-  location   String
-  TenantType TenantType
-  rooms      Room[]
-  features   Features[]
-  bookings   Booking[]
-  reviews    String[]
+  id              String       @id @default(auto()) @map("_id") @db.ObjectId
+  name            String
+  type            PropertyType
+  description     String?
+  location        String
+  TenantType      TenantType
+  rooms           Room[]
+  features        Features[]
+  bookings        Booking[]
+  latitude        Float?
+  longitude       Float?
+  securityDeposit Float       @default(0)
+  isActive        Boolean     @default(true)
+  foodIncluded    Boolean     @default(false)
+  foodPrice       Float?      @default(0)
+  bathroomType    String      @default("attached")
+  bhkType         String?
+  furnishingType  String      @default("UNFURNISHED")
+  gender          String      @default("COED")
 
-  ownerId String   @db.ObjectId
-  owner   User     @relation(fields: [ownerId], references: [id])
-  Review  Review[]
+  ownerId   String    @db.ObjectId
+  owner     User      @relation(fields: [ownerId], references: [id])
+  Review    Review[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
 
 model Room {
-  id         String    @id @default(auto()) @map("_id") @db.ObjectId
-  name       String
-  type       RoomType
-  price      Int
-  capacity   Int
-  propertyId String    @db.ObjectId
-  property   Property  @relation(fields: [propertyId], references: [id])
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  Booking    Booking[]
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  name          String
+  roomNumber    String?
+  type          RoomType
+  price         Float
+  capacity      Int
+  availableBeds Int
+  isActive      Boolean   @default(true)
+  propertyId    String    @db.ObjectId
+  property      Property  @relation(fields: [propertyId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  Booking       Booking[]
 }
 
 model Booking {

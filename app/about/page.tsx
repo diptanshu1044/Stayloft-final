@@ -44,7 +44,7 @@ const AboutPage = () => {
                   <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
                   <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
                 </div>
-                <p className="font-medium">Trusted by over 10,000 users</p>
+                <p className="font-medium">Trusted Platform by Users</p>
               </div>
             </div>
           </div>
@@ -108,7 +108,7 @@ const AboutPage = () => {
                 <div className="flex-1">
                   <h3 className="text-xl font-bold mb-2">The Beginning</h3>
                   <p className="text-gray-700 mb-4">
-                    StayLoft was founded in 2020 by a team of young
+                    StayLoft was founded in 2025 by a team of young
                     entrepreneurs who experienced firsthand the challenges of
                     finding suitable accommodation in India's major cities. The
                     fragmented market, lack of transparency, and limited options
@@ -128,8 +128,8 @@ const AboutPage = () => {
                 <div className="flex-1">
                   <h3 className="text-xl font-bold mb-2">The Growth</h3>
                   <p className="text-gray-700 mb-4">
-                    Starting with just a handful of listings in Bangalore,
-                    StayLoft quickly expanded to cover major cities across
+                    Starting with just a handful of listings in Dehradun,
+                    StayLoft will quickly expand to cover major cities across
                     India. Our user-centric approach and focus on verified
                     listings helped us gain the trust of thousands of property
                     owners and tenants alike.
@@ -161,16 +161,6 @@ const AboutPage = () => {
                   <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold">
                     4
                   </div>
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold mb-2">Today & Beyond</h3>
-                  <p className="text-gray-700 mb-4">
-                    Today, StayLoft has over 10,000 active listings across 15+
-                    cities in India. With a passionate team dedicated to
-                    improving the platform, we're constantly exploring new ways
-                    to enhance the property search experience and expand our
-                    services to meet the evolving needs of our users.
-                  </p>
                 </div>
               </div>
             </div>
@@ -253,8 +243,8 @@ const AboutPage = () => {
                 className="w-full h-60 object-cover"
               />
               <div className="p-5">
-                <h3 className="font-bold text-lg">Rahul Sharma</h3>
-                <p className="text-primary">CEO & Co-Founder</p>
+                <h3 className="font-bold text-lg">Vansh Bhatia</h3>
+                <p className="text-primary">Frontend and Backend Developer</p>
               </div>
             </div>
 
@@ -265,8 +255,8 @@ const AboutPage = () => {
                 className="w-full h-60 object-cover"
               />
               <div className="p-5">
-                <h3 className="font-bold text-lg">Neha Patel</h3>
-                <p className="text-primary">COO & Co-Founder</p>
+                <h3 className="font-bold text-lg">Diptanshu Banerjee</h3>
+                <p className="text-primary">Frontend and Backend Developer</p>
               </div>
             </div>
 
@@ -277,8 +267,8 @@ const AboutPage = () => {
                 className="w-full h-60 object-cover"
               />
               <div className="p-5">
-                <h3 className="font-bold text-lg">Vikram Singh</h3>
-                <p className="text-primary">CTO</p>
+                <h3 className="font-bold text-lg">Mansi Naidu</h3>
+                <p className="text-primary">UI/UX and database</p>
               </div>
             </div>
 
@@ -289,8 +279,19 @@ const AboutPage = () => {
                 className="w-full h-60 object-cover"
               />
               <div className="p-5">
-                <h3 className="font-bold text-lg">Priya Verma</h3>
-                <p className="text-primary">Head of Marketing</p>
+                <h3 className="font-bold text-lg">Yash Parmar</h3>
+                <p className="text-primary">Database Manager</p>
+              </div>
+            </div>
+            <div className="bg-white rounded-lg overflow-hidden shadow-xs">
+              <img
+                src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=776&q=80"
+                alt="Team Member"
+                className="w-full h-60 object-cover"
+              />
+              <div className="p-5">
+                <h3 className="font-bold text-lg">Mihika</h3>
+                <p className="text-primary">Project Manager</p>
               </div>
             </div>
           </div>

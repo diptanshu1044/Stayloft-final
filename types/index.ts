@@ -1,27 +1,107 @@
+import { PropertyType, TenantType, Features, RoomType } from "@prisma/client";
+
+export enum BathroomType {
+  ATTACHED = "ATTACHED",
+  COMMON = "COMMON"
+}
+
+export enum FurnishingType {
+  FULLY_FURNISHED = "FULLY_FURNISHED",
+  SEMI_FURNISHED = "SEMI_FURNISHED",
+  UNFURNISHED = "UNFURNISHED"
+}
+
+export enum Gender {
+  MALE = "MALE",
+  FEMALE = "FEMALE",
+  COED = "COED"
+}
+
+export interface RoomAvailability {
+  roomType: string;
+  totalBeds: number;
+  availableBeds: number;
+  isActive: boolean;
+}
+
 export interface Property {
   id: string;
   title: string;
   description: string;
   type: "FLAT" | "PG" | "HOSTEL";
+  location: {
+    city: string;
+    area: string;
+  };
+  totalRooms: number;
+  occupancyTypes: string[];
+  prices: Record<string, number>;
+  bathroomType: "attached" | "common";
+  bhkType?: string;
+  gender: "boys" | "girls" | "coed";
+  securityDeposit: number;
+  depositType: "amount" | "percentage";
+  hasBalcony: boolean;
+  hasAC: boolean;
+  foodIncluded: boolean;
+  foodPrice?: number;
+  isActive: boolean;
+  amenities: string[];
+  images: {
+    url: string;
+    isThumbnail: boolean;
+  }[];
+  roomAvailability: RoomAvailability[];
+}
+
+export interface Room {
+  id: string;
+  name: string;
+  roomNumber?: string;
+  type: RoomType;
+  price: number;
+  capacity: number;
+  availableBeds: number;
+  isActive: boolean;
+  propertyId: string;
+  property?: Property;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface PropertyFormData {
+  id: string;
+  title: string;
+  description: string;
+  type: PropertyType;
   location: PropertyLocation;
   price: number;
-  images: { url: string }[];
-  amenities: Amenity[];
+  images: { url: string; isThumbnail: boolean }[];
+  amenities: Features[];
   isActive: boolean;
   ownerId: string;
   createdAt: Date;
   updatedAt: Date;
-  
+
   // Property-specific fields
   bedrooms?: number;
   bathrooms?: number;
   area?: string;
   furnishingType?: "FULLY_FURNISHED" | "SEMI_FURNISHED" | "UNFURNISHED";
-  
+
   // PG/Hostel-specific fields
-  gender?: "MALE" | "FEMALE" | "UNISEX";
+  gender?: TenantType;
   totalBeds?: number;
-  
+
+  // Room management
+  rooms?: {
+    id: string;
+    type: RoomType;
+    capacity: number;
+    availableBeds?: number;
+    isActive?: boolean;
+  }[];
+
   // Common optional fields
   ratings?: number;
   numReviews?: number;
@@ -47,24 +127,22 @@ export interface PropertyLocation {
   longitude?: number;
 }
 
-export type PropertyType = "FLAT" | "PG" | "HOSTEL";
-
-export type Amenity = 
-  | "WIFI" 
-  | "AC" 
-  | "PARKING" 
-  | "LAUNDRY" 
-  | "TV" 
+export type Amenity =
+  | "WIFI"
+  | "AC"
+  | "PARKING"
+  | "LAUNDRY"
+  | "TV"
   | "FRIDGE"
-  | "KITCHEN" 
-  | "SECURITY" 
-  | "GYM" 
-  | "SWIMMING_POOL" 
-  | "POWER_BACKUP" 
-  | "STUDY_TABLE" 
-  | "LIFT" 
-  | "CCTV" 
-  | "FOOD" 
+  | "KITCHEN"
+  | "SECURITY"
+  | "GYM"
+  | "SWIMMING_POOL"
+  | "POWER_BACKUP"
+  | "STUDY_TABLE"
+  | "LIFT"
+  | "CCTV"
+  | "FOOD"
   | "CLEANING"
   | "ATTACHED_BATHROOM"
   | "GEYSER"
@@ -172,10 +250,12 @@ export interface VerificationDocument {
 
 export type Language = "English" | "Hindi" | "Tamil" | "Telugu" | "Kannada" | "Malayalam" | "Bengali" | "Marathi" | "Gujarati";
 
-
-export type RoomAvailability = {
-  roomType: string;
-  totalBeds: number;
-  availableBeds: number;
-  isActive: boolean;
-};
+export interface Review {
+  id: string;
+  rating: number;
+  comment?: string;
+  propertyId: string;
+  userId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}

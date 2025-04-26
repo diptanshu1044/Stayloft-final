@@ -5,17 +5,22 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { UseFormReturn } from "react-hook-form";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 
-const occupancyTypes = [
-  { id: "single", label: "Single" },
-  { id: "double", label: "Double" },
-  { id: "triple", label: "Triple" },
+const roomTypes = [
+  { id: "SINGLE", label: "Single", capacity: 1 },
+  { id: "DOUBLE", label: "Double", capacity: 2 },
+  { id: "TRIPLE", label: "Triple", capacity: 3 },
+  { id: "BHK1", label: "1 BHK", capacity: 1 },
+  { id: "BHK2", label: "2 BHK", capacity: 2 },
+  { id: "BHK3", label: "3 BHK", capacity: 3 },
+  { id: "CUSTOM", label: "Custom", capacity: 1 },
 ];
 
 const genderTypes = [
-  { id: "boys", label: "Boys Only" },
-  { id: "girls", label: "Girls Only" },
-  { id: "coed", label: "Co-ed" },
+  { id: "MALE", label: "Boys Only" },
+  { id: "FEMALE", label: "Girls Only" },
+  { id: "COED", label: "Co-ed" },
 ];
 
 interface RoomDetailsProps {
@@ -23,55 +28,37 @@ interface RoomDetailsProps {
 }
 
 const RoomDetails = ({ form }: RoomDetailsProps) => {
-  const selectedOccupancies = form.watch("occupancyTypes") || [];
-
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <FormField
           control={form.control}
-          name="totalRooms"
+          name="bhkType"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Total Rooms/Beds</FormLabel>
+              <FormLabel>BHK Type</FormLabel>
               <FormControl>
-                <Input type="number" {...field} min={1} />
+                <RadioGroup
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                  className="flex flex-wrap gap-4"
+                >
+                  {[1, 2, 3, 4].map((bhk) => (
+                    <FormItem key={bhk} className="flex items-center space-x-2">
+                      <FormControl>
+                        <RadioGroupItem value={bhk.toString()} />
+                      </FormControl>
+                      <FormLabel className="font-normal">
+                        {`${bhk} BHK`}
+                      </FormLabel>
+                    </FormItem>
+                  ))}
+                </RadioGroup>
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
-
-        {form.watch("type") === "FLAT" && (
-          <FormField
-            control={form.control}
-            name="bhkType"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>BHK Type</FormLabel>
-                <FormControl>
-                  <RadioGroup
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                    className="flex flex-wrap gap-4"
-                  >
-                    {[1, 2, 3, 4, "other"].map((bhk) => (
-                      <FormItem key={bhk} className="flex items-center space-x-2">
-                        <FormControl>
-                          <RadioGroupItem value={bhk.toString()} />
-                        </FormControl>
-                        <FormLabel className="font-normal">
-                          {bhk === "other" ? "Other" : `${bhk} BHK`}
-                        </FormLabel>
-                      </FormItem>
-                    ))}
-                  </RadioGroup>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
 
         <FormField
           control={form.control}
@@ -112,18 +99,47 @@ const RoomDetails = ({ form }: RoomDetailsProps) => {
               <FormLabel>Property For</FormLabel>
               <FormControl>
                 <RadioGroup
-                  onValueChange={field.onChange}
+                  onValueChange={(value) => field.onChange(value)}
                   defaultValue={field.value}
-                  className="flex gap-4"
+                  className="flex flex-col space-y-1"
                 >
-                  {genderTypes.map(({ id, label }) => (
-                    <FormItem key={id} className="flex items-center space-x-2">
-                      <FormControl>
-                        <RadioGroupItem value={id} />
-                      </FormControl>
-                      <FormLabel className="font-normal">{label}</FormLabel>
-                    </FormItem>
+                  {genderTypes.map((type) => (
+                    <div key={type.id} className="flex items-center space-x-3 space-y-0">
+                      <RadioGroupItem value={type.id} />
+                      <Label>{type.label}</Label>
+                    </div>
                   ))}
+                </RadioGroup>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="furnishingType"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Furnishing Type</FormLabel>
+              <FormControl>
+                <RadioGroup
+                  onValueChange={(value) => field.onChange(value)}
+                  defaultValue={field.value}
+                  className="flex flex-col space-y-1"
+                >
+                  <div className="flex items-center space-x-3 space-y-0">
+                    <RadioGroupItem value="FULLY_FURNISHED" />
+                    <Label>Fully Furnished</Label>
+                  </div>
+                  <div className="flex items-center space-x-3 space-y-0">
+                    <RadioGroupItem value="SEMI_FURNISHED" />
+                    <Label>Semi Furnished</Label>
+                  </div>
+                  <div className="flex items-center space-x-3 space-y-0">
+                    <RadioGroupItem value="UNFURNISHED" />
+                    <Label>Unfurnished</Label>
+                  </div>
                 </RadioGroup>
               </FormControl>
               <FormMessage />
@@ -134,28 +150,48 @@ const RoomDetails = ({ form }: RoomDetailsProps) => {
 
       <FormField
         control={form.control}
-        name="occupancyTypes"
+        name="rooms"
         render={() => (
           <FormItem>
             <FormLabel>Room Types</FormLabel>
+            <FormDescription>
+              Select the types of rooms available in your property
+            </FormDescription>
             <div className="flex flex-col gap-4">
-              {occupancyTypes.map(({ id, label }) => (
+              {roomTypes.map(({ id, label, capacity }) => (
                 <FormField
                   key={id}
                   control={form.control}
-                  name="occupancyTypes"
+                  name="rooms"
                   render={({ field }) => {
+                    const currentRooms = field.value || [];
+                    const isSelected = currentRooms.some((room: any) => room.type === id);
+
                     return (
                       <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                         <FormControl>
                           <Checkbox
-                            checked={field.value?.includes(id)}
+                            checked={isSelected}
                             onCheckedChange={(checked) => {
-                              const current = field.value || [];
-                              const updated = checked
-                                ? [...current, id]
-                                : current.filter((value: string) => value !== id);
-                              field.onChange(updated);
+                              if (checked) {
+                                // Add new room type
+                                const newRoom = {
+                                  name: `${label} Room`,
+                                  roomNumber: `${id}-1`,
+                                  type: id,
+                                  price: capacity * 1000, // Default price based on capacity
+                                  capacity: capacity,
+                                  availableBeds: capacity,
+                                  isActive: true
+                                };
+                                field.onChange([...currentRooms, newRoom]);
+                              } else {
+                                // Remove room type
+                                const filteredRooms = currentRooms.filter(
+                                  (room: any) => room.type !== id
+                                );
+                                field.onChange(filteredRooms);
+                              }
                             }}
                           />
                         </FormControl>
@@ -167,139 +203,6 @@ const RoomDetails = ({ form }: RoomDetailsProps) => {
               ))}
             </div>
             <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      {selectedOccupancies.map((type: string) => (
-        <FormField
-          key={type}
-          control={form.control}
-          name={`prices.${type}`}
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>{`Price for ${type} occupancy (₹)`}</FormLabel>
-              <FormControl>
-                <Input type="number" {...field} min={0} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      ))}
-
-      <FormField
-        control={form.control}
-        name="securityDeposit"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Security Deposit</FormLabel>
-            <div className="grid grid-cols-2 gap-4">
-              <FormControl>
-                <Input type="number" placeholder="Amount/Percentage" {...field} min={0} />
-              </FormControl>
-              <RadioGroup
-                onValueChange={(value) => form.setValue("depositType", value)}
-                defaultValue={form.watch("depositType") || "amount"}
-                className="flex gap-4"
-              >
-                <FormItem className="flex items-center space-x-2">
-                  <FormControl>
-                    <RadioGroupItem value="amount" />
-                  </FormControl>
-                  <FormLabel className="font-normal">Amount</FormLabel>
-                </FormItem>
-                <FormItem className="flex items-center space-x-2">
-                  <FormControl>
-                    <RadioGroupItem value="percentage" />
-                  </FormControl>
-                  <FormLabel className="font-normal">Percentage</FormLabel>
-                </FormItem>
-              </RadioGroup>
-            </div>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <FormField
-          control={form.control}
-          name="hasBalcony"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-              <div className="space-y-0.5">
-                <FormLabel>Balcony</FormLabel>
-                <FormDescription>
-                  Does the room include a balcony?
-                </FormDescription>
-              </div>
-              <FormControl>
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              </FormControl>
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="hasAC"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-              <div className="space-y-0.5">
-                <FormLabel>Air Conditioning</FormLabel>
-                <FormDescription>
-                  Is AC available in the room?
-                </FormDescription>
-              </div>
-              <FormControl>
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              </FormControl>
-            </FormItem>
-          )}
-        />
-      </div>
-
-      <FormField
-        control={form.control}
-        name="foodIncluded"
-        render={({ field }) => (
-          <FormItem className="space-y-4">
-            <div className="flex flex-row items-center justify-between rounded-lg border p-4">
-              <div className="space-y-0.5">
-                <FormLabel>Food Option</FormLabel>
-                <FormDescription>
-                  Include food in room price?
-                </FormDescription>
-              </div>
-              <FormControl>
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              </FormControl>
-            </div>
-            {field.value && (
-              <FormField
-                control={form.control}
-                name="foodPrice"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Monthly Food Price (₹)</FormLabel>
-                    <FormControl>
-                      <Input type="number" {...field} min={0} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
           </FormItem>
         )}
       />

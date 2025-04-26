@@ -1,4 +1,4 @@
-import Link from "next/link"
+import Link from "next/link";
 import {
   Bell,
   LogOut,
@@ -10,8 +10,8 @@ import {
   Moon,
   Laptop,
   HelpCircle,
-  UserCheck
-} from "lucide-react"
+  UserCheck,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,14 +25,15 @@ import {
   DropdownMenuSubContent,
   DropdownMenuPortal,
   DropdownMenuRadioGroup,
-  DropdownMenuRadioItem
-} from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
-import { useTheme } from "next-themes"
-import { UserRole, ThemeType } from "@/types"
-import { useEffect, useState } from "react"
-import { useClerk } from "@clerk/nextjs"
+  DropdownMenuRadioItem,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { useTheme } from "next-themes";
+import { UserRole, ThemeType } from "@/types";
+import { useEffect, useState } from "react";
+import { useClerk } from "@clerk/nextjs";
+import LocationStore from "@/store/LocationStore";
 
 interface UserMenuProps {
   userType?: UserRole;
@@ -40,33 +41,48 @@ interface UserMenuProps {
   userImage?: string;
 }
 
-export function UserMenu({ userType = "TENANT", userName = "User", userImage }: UserMenuProps) {
+export function UserMenu({
+  userType = "TENANT",
+  userName = "User",
+  userImage,
+}: UserMenuProps) {
   const { setTheme, theme } = useTheme();
-  const dashboardPath = userType === "OWNER" ? "/dashboard" : "/user-dashboard/";
-  const initials = userName.split(" ").map(n => n[0]).join("").toUpperCase();
-  
+  const dashboardPath =
+    userType === "OWNER" ? "/dashboard" : "/user-dashboard/";
+  const initials = userName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase();
+
   const [storedAvatar, setStoredAvatar] = useState<string | null>(null);
   const { signOut } = useClerk();
-  
+
   useEffect(() => {
     // Get avatar from localStorage if available
     const avatar = localStorage.getItem("userAvatar");
     if (avatar) {
       setStoredAvatar(avatar);
     }
-    
+
     // Listen for storage events to update avatar if changed in another tab
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "userAvatar") {
         setStoredAvatar(e.newValue);
       }
     };
-    
+
     window.addEventListener("storage", handleStorageChange);
     return () => {
       window.removeEventListener("storage", handleStorageChange);
     };
   }, []);
+
+  const handleLogout = () => {
+    signOut();
+    useLocationStore.getState().clearLocationData();
+    localStorage.removeItem("location-storage");
+  };
 
   return (
     <DropdownMenu>
@@ -122,7 +138,10 @@ export function UserMenu({ userType = "TENANT", userName = "User", userImage }: 
           </DropdownMenuSubTrigger>
           <DropdownMenuPortal>
             <DropdownMenuSubContent>
-              <DropdownMenuRadioGroup value={theme} onValueChange={(value) => setTheme(value as ThemeType)}>
+              <DropdownMenuRadioGroup
+                value={theme}
+                onValueChange={(value) => setTheme(value as ThemeType)}
+              >
                 <DropdownMenuRadioItem value="light">
                   <Sun className="mr-2 h-4 w-4" />
                   Light
@@ -146,19 +165,19 @@ export function UserMenu({ userType = "TENANT", userName = "User", userImage }: 
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem 
+        <DropdownMenuItem
           asChild
           onClick={() => {
             localStorage.removeItem("isLoggedIn");
             localStorage.removeItem("userRole");
           }}
         >
-          <Link className="text-red-600" onClick={() => signOut()} href="/">
+          <Link className="text-red-600" onClick={handleLogout} href="/">
             <LogOut className="mr-2 h-4 w-4" />
             Log out
           </Link>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }

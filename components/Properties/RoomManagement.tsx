@@ -9,13 +9,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Bed, Check, X } from "lucide-react";
+import { PropertyType } from "@prisma/client";
 
 interface RoomManagementProps {
+  propertyType: PropertyType;
   roomAvailability: RoomAvailability[];
-  onRoomUpdate: (updatedRooms: RoomAvailability[]) => void;
+  onUpdate: (updatedRooms: RoomAvailability[]) => void;
 }
 
-const RoomManagement = ({ roomAvailability, onRoomUpdate }: RoomManagementProps) => {
+const RoomManagement = ({ propertyType, roomAvailability, onUpdate }: RoomManagementProps) => {
   const [rooms, setRooms] = useState<RoomAvailability[]>([]);
 
   useEffect(() => {
@@ -28,7 +30,7 @@ const RoomManagement = ({ roomAvailability, onRoomUpdate }: RoomManagementProps)
     const updatedRooms = [...rooms];
     updatedRooms[index].availableBeds = value;
     setRooms(updatedRooms);
-    onRoomUpdate(updatedRooms);
+    onUpdate(updatedRooms);
   };
 
   const handleTotalBedsChange = (index: number, value: number) => {
@@ -39,17 +41,20 @@ const RoomManagement = ({ roomAvailability, onRoomUpdate }: RoomManagementProps)
       updatedRooms[index].availableBeds = value;
     }
     setRooms(updatedRooms);
-    onRoomUpdate(updatedRooms);
+    onUpdate(updatedRooms);
   };
 
   const handleToggleActive = (index: number) => {
     const updatedRooms = [...rooms];
     updatedRooms[index].isActive = !updatedRooms[index].isActive;
     setRooms(updatedRooms);
-    onRoomUpdate(updatedRooms);
+    onUpdate(updatedRooms);
   };
 
   const formatRoomType = (type: string) => {
+    if (propertyType === "FLAT") {
+      return type;
+    }
     return type.charAt(0).toUpperCase() + type.slice(1) + " Occupancy";
   };
 
@@ -58,16 +63,16 @@ const RoomManagement = ({ roomAvailability, onRoomUpdate }: RoomManagementProps)
       <CardHeader>
         <CardTitle className="text-xl flex items-center gap-2">
           <Bed className="h-5 w-5" />
-          Room Availability Management
+          {propertyType === "FLAT" ? "Room Details" : "Room Availability Management"}
         </CardTitle>
       </CardHeader>
       <CardContent>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Room Type</TableHead>
-              <TableHead>Total Beds</TableHead>
-              <TableHead>Available Beds</TableHead>
+              <TableHead>{propertyType === "FLAT" ? "Room Type" : "Room Type"}</TableHead>
+              <TableHead>{propertyType === "FLAT" ? "Total Rooms" : "Total Beds"}</TableHead>
+              <TableHead>{propertyType === "FLAT" ? "Available Rooms" : "Available Beds"}</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
@@ -125,15 +130,15 @@ const RoomManagement = ({ roomAvailability, onRoomUpdate }: RoomManagementProps)
             ))}
           </TableBody>
         </Table>
-        
+
         {rooms.length === 0 && (
           <div className="text-center py-8 text-gray-500">
             No room types available. Please add room types in the Room Details section.
           </div>
         )}
-        
+
         <div className="mt-4 text-sm text-gray-500">
-          <p>* Set available beds to 0 if all rooms of this type are occupied.</p>
+          <p>* Set available {propertyType === "FLAT" ? "rooms" : "beds"} to 0 if all {propertyType === "FLAT" ? "rooms" : "beds"} of this type are occupied.</p>
           <p>* Toggle the switch to make a room type active or inactive in listings.</p>
         </div>
       </CardContent>

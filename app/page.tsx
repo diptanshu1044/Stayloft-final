@@ -6,11 +6,14 @@ import PopularCities from "@/components/Home/PopularCities";
 import PreFooterCTA from "@/components/Home/PreFooterCTA";
 import WhyChooseStayloft from "@/components/Home/WhyChooseStayloft";
 import UserTypeModal from "@/components/UserTypeModal";
+import LocationPopup from "@/components/LocationPopup";
+import HomeClient from "@/components/HomeClient";
 
 export default async function Home() {
   await syncUser();
   return (
     <>
+      <HomeClient />
       <UserTypeModal />
       <HeroSection />
       <FeaturedProperties />

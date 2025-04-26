@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,7 +14,6 @@ import { Form } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { mockFlats, mockPGs, mockHostels } from "@/lib/MockData";
 import { toast } from "sonner";
 import BasicPropertyDetails from "@/components/Properties/BasicPropertyDetails";
 import PropertyLocation from "@/components/Properties/PropertyLocation";
@@ -22,106 +21,115 @@ import PropertyImageUpload from "@/components/Properties/PropertyImageUpload";
 import PropertyAvailability from "@/components/Properties/PropertyAvailability";
 import RoomDetails from "@/components/Properties/RoomDetails";
 import RoomManagement from "@/components/Properties/RoomManagement";
-import { Property, PropertyLocation as PropertyLocationType, PropertyType, Amenity, RoomAvailability } from "@/types";
+import {
+  Property,
+  RoomAvailability,
+  BathroomType,
+  FurnishingType,
+  Gender
+} from "@/types";
+import {
+  createProperty,
+  getProperty,
+  updateProperty,
+} from "@/actions/property.action";
+import {
+  PropertyType,
+  TenantType,
+  Features,
+  RoomType,
+} from "@prisma/client";
 
-// Update the amenities enum to match the type definition
-const amenityEnum = z.enum([
-  "WIFI",
-  "AC",
-  "PARKING",
-  "LAUNDRY",
-  "TV",
-  "FRIDGE",
-  "KITCHEN",
-  "SECURITY",
-  "GYM",
-  "SWIMMING_POOL",
-  "POWER_BACKUP",
-  "STUDY_TABLE",
-  "LIFT",
-  "CCTV",
-  "FOOD",
-  "CLEANING",
-  "ATTACHED_BATHROOM",
-  "GEYSER",
-  "FURNISHED",
-  "WASHING_MACHINE",
-]);
-
-// Update gender enum to match the type definition
-const genderEnum = z.enum(["MALE", "FEMALE", "UNISEX", "COED"]);
-
-// Update furnishing type enum to match the type definition
-const furnishingTypeEnum = z.enum(["FULLY_FURNISHED", "SEMI_FURNISHED", "UNFURNISHED"]);
-
+// Form schema
 const formSchema = z.object({
-  title: z.string().min(5),
-  description: z.string().min(20),
-  type: z.enum(["FLAT", "PG", "HOSTEL"]) as z.ZodType<PropertyType>,
-  location: z.object({
-    street: z.string().optional(),
-    city: z.string().min(2),
-    state: z.string().optional(),
-    country: z.string().optional(),
-    zipCode: z.string().optional(),
-    coordinates: z
-      .object({
-        lat: z.number(),
-        lng: z.number(),
-      })
-      .optional(),
-    area: z.string().optional(),
-    address: z.string().optional(),
-    pincode: z.string().optional(),
-    latitude: z.number().optional(),
-    longitude: z.number().optional(),
-  }) as z.ZodType<PropertyLocationType>,
-  price: z.number().min(0),
-  images: z
-    .array(
-      z.object({ url: z.string(), isThumbnail: z.boolean().default(false) }),
-    )
-    .default([]),
-  amenities: z
-    .array(amenityEnum)
-    .default([]),
+  name: z.string().min(5, "Name must be at least 5 characters"),
+  type: z.nativeEnum(PropertyType),
+  description: z.string().min(20, "Description must be at least 20 characters"),
+  location: z.string().min(2, "Location is required"),
+  TenantType: z.nativeEnum(TenantType),
+  features: z.array(z.nativeEnum(Features)),
+  latitude: z.number().nullable().optional(),
+  longitude: z.number().nullable().optional(),
+  securityDeposit: z.number().min(0),
   isActive: z.boolean().default(true),
-  bedrooms: z.number().optional(),
-  bathrooms: z.number().optional(),
-  area: z.string().optional(), // Changed from number to string to match Property type
-  furnishingType: furnishingTypeEnum.optional(),
-  gender: genderEnum.optional(),
-  totalBeds: z.number().optional(),
-  ratings: z.number().optional(),
-  numReviews: z.number().optional(),
-  rules: z.array(z.string()).optional(),
-  securityDeposit: z.number().min(0).optional(),
-  availableFrom: z.coerce.date().optional(),
-  
-  // Additional fields for form functionality (not in Property type)
-  totalRooms: z.number().min(1),
-  occupancyTypes: z.array(z.string()).min(1),
-  prices: z.record(z.string(), z.number().min(0)),
-  bathroomType: z.enum(["attached", "common"]),
-  bhkType: z.string().optional(),
-  depositType: z.enum(["amount", "percentage"]),
-  hasBalcony: z.boolean().default(false),
-  hasAC: z.boolean().default(false),
   foodIncluded: z.boolean().default(false),
-  foodPrice: z.number().optional(),
-  roomAvailability: z
-    .array(
-      z.object({
-        roomType: z.string(),
-        totalBeds: z.number().min(1),
-        availableBeds: z.number().min(0),
-        isActive: z.boolean(),
-      })
-    )
-    .optional(),
+  foodPrice: z.number().nullable().optional(),
+  bathroomType: z.nativeEnum(BathroomType),
+  bhkType: z.string().optional(),
+  furnishingType: z.nativeEnum(FurnishingType),
+  gender: z.nativeEnum(Gender).optional(),
+  rooms: z.array(z.object({
+    type: z.nativeEnum(RoomType),
+    name: z.string(),
+    roomNumber: z.string().optional(),
+    price: z.number(),
+    capacity: z.number(),
+    availableBeds: z.number(),
+    isActive: z.boolean(),
+    roomType: z.nativeEnum(RoomType),
+    totalBeds: z.number()
+  }))
 });
 
-type FormValues = z.infer<typeof formSchema>;
+type FormSchema = z.infer<typeof formSchema>;
+
+// Default values for the form
+const defaultValues: Partial<FormSchema> = {
+  type: PropertyType.PG,
+  name: "",
+  description: "",
+  location: "",
+  TenantType: TenantType.BOYS,
+  features: [],
+  securityDeposit: 0,
+  isActive: true,
+  foodIncluded: false,
+  foodPrice: null,
+  bathroomType: BathroomType.ATTACHED,
+  furnishingType: FurnishingType.UNFURNISHED,
+  gender: undefined,
+  bhkType: undefined,
+  rooms: [],
+};
+
+interface PropertyResponse {
+  success: boolean;
+  property: {
+    id: string;
+    name: string;
+    type: PropertyType;
+    description: string;
+    location: string;
+    TenantType: TenantType;
+    features: Features[];
+    latitude: number;
+    longitude: number;
+    securityDeposit: number;
+    isActive: boolean;
+    foodIncluded: boolean;
+    foodPrice: number;
+    bathroomType: BathroomType;
+    bhkType: string;
+    furnishingType: FurnishingType;
+    gender: Gender;
+    ownerId: string;
+    images: string[];
+    owner: { name: string; image: string | null };
+    rooms: {
+      id: string;
+      type: RoomType;
+      name: string;
+      roomNumber: string | null;
+      price: number;
+      capacity: number;
+      availableBeds: number;
+      isActive: boolean;
+    }[];
+    Review: any[];
+    createdAt: Date;
+    updatedAt: Date;
+  };
+}
 
 const AddEditPropertyPage = () => {
   const params = useParams();
@@ -130,246 +138,214 @@ const AddEditPropertyPage = () => {
   const isEditing = Boolean(id);
 
   const [loading, setLoading] = useState(false);
-  const [images, setImages] = useState<FormValues["images"]>([]);
-  const [roomAvailability, setRoomAvailability] = useState<RoomAvailability[]>(
-    [],
-  );
+  const [images, setImages] = useState<string[]>([]);
+  const [roomAvailability, setRoomAvailability] = useState<RoomAvailability[]>([]);
+  const [property, setProperty] = useState<Property | null>(null);
 
-  const allProperties: Property[] = [...mockFlats, ...mockPGs, ...mockHostels];
-  const property = id ? allProperties.find((prop) => prop.id === id) : null;
-
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      title: property?.title || "",
-      description: property?.description || "",
-      type: property?.type || "FLAT",
-      location: {
-        city: property?.location.city || "",
-        area: property?.location.area || "",
-      },
-      price: property?.price || 0,
-      totalRooms: property?.totalBeds || 1, // Map totalBeds to totalRooms for PG/Hostel
-      bedrooms: property?.bedrooms || 1, // For flats
-      bathrooms: property?.bathrooms || 1, // For flats
-      area: property?.area || "",
-      furnishingType: property?.furnishingType || undefined,
-      gender: property?.gender || "COED",
-      totalBeds: property?.totalBeds || 0,
-      occupancyTypes: property?.totalBeds ? ["Single"] : [], // Default occupancy type
-      prices: {}, // Will be filled based on occupancy types
-      bathroomType: "attached", // Default
-      bhkType: property?.bedrooms ? `${property.bedrooms}` : "1", // For flats
-      securityDeposit: property?.securityDeposit || 0,
-      depositType: "amount", // Default
-      hasBalcony: false, // Default
-      hasAC: false, // Default
-      foodIncluded: false, // Default
-      foodPrice: 0, // Default
-      isActive: property?.isActive ?? true,
-      amenities: property?.amenities || [],
-      images: property?.images || [],
-      roomAvailability: [],
-      availableFrom: property?.availableFrom || new Date(),
-      ratings: property?.ratings || 0,
-      numReviews: property?.numReviews || 0,
-      rules: property?.rules || [],
-    },
+  const form = useForm<FormSchema>({
+    resolver: zodResolver(formSchema) as any,
+    defaultValues: defaultValues as FormSchema,
+    mode: "onChange"
   });
 
-  useEffect(() => {
-    if (property) {
-      setImages(property.images || []);
-      // Convert property data to roomAvailability format if it's a PG/HOSTEL
-      if (property.type === "PG" || property.type === "HOSTEL") {
-        // Create a basic room availability entry based on property data
-        setRoomAvailability([
-          {
-            roomType: "Single",
-            totalBeds: property.totalBeds || 0,
-            availableBeds: property.totalBeds || 0,
-            isActive: true
+  const fetchProperty = useCallback(async () => {
+    if (typeof params.id === 'string') {
+      try {
+        const response = await getProperty(params.id) as unknown as PropertyResponse;
+        if (response.success && response.property) {
+          const propertyData: Property = {
+            id: response.property.id,
+            name: response.property.name,
+            type: response.property.type,
+            description: response.property.description,
+            location: response.property.location,
+            TenantType: response.property.TenantType,
+            features: response.property.features,
+            latitude: response.property.latitude,
+            longitude: response.property.longitude,
+            securityDeposit: response.property.securityDeposit,
+            isActive: response.property.isActive,
+            foodIncluded: response.property.foodIncluded,
+            foodPrice: response.property.foodPrice,
+            bathroomType: response.property.bathroomType as BathroomType,
+            bhkType: response.property.bhkType,
+            furnishingType: response.property.furnishingType as FurnishingType,
+            gender: response.property.gender as Gender,
+            ownerId: response.property.ownerId,
+            images: response.property.images || [],
+            owner: response.property.owner || { name: '', image: null },
+            rooms: response.property.rooms.map(room => ({
+              id: room.id,
+              type: room.type,
+              name: room.name,
+              roomNumber: room.roomNumber || null,
+              price: room.price,
+              capacity: room.capacity,
+              availableBeds: room.availableBeds,
+              isActive: room.isActive
+            })),
+            Review: response.property.Review || [],
+            createdAt: response.property.createdAt,
+            updatedAt: response.property.updatedAt
+          };
+
+          setProperty(propertyData);
+          if (Array.isArray(propertyData.images)) {
+            setImages(propertyData.images);
+          } else {
+            setImages([]);
           }
-        ]);
+
+          form.reset({
+            type: propertyData.type,
+            name: propertyData.name,
+            description: propertyData.description || "",
+            location: propertyData.location,
+            TenantType: propertyData.TenantType,
+            features: propertyData.features,
+            latitude: propertyData.latitude ?? null,
+            longitude: propertyData.longitude ?? null,
+            securityDeposit: propertyData.securityDeposit,
+            isActive: propertyData.isActive,
+            foodIncluded: propertyData.foodIncluded,
+            foodPrice: propertyData.foodPrice,
+            bathroomType: propertyData.bathroomType as BathroomType,
+            furnishingType: propertyData.furnishingType as FurnishingType,
+            gender: propertyData.gender as Gender,
+            bhkType: propertyData.bhkType || undefined,
+            rooms: propertyData.rooms.map(room => ({
+              id: room.id,
+              type: room.type,
+              name: room.name,
+              roomNumber: room.roomNumber || undefined,
+              price: room.price,
+              capacity: room.capacity,
+              availableBeds: room.availableBeds,
+              isActive: room.isActive,
+              roomType: room.type,
+              totalBeds: room.capacity
+            }))
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching property:", error);
+        toast.error("Failed to fetch property details");
       }
     }
-  }, [property]);
+  }, [params.id, form]);
 
   useEffect(() => {
-    const subscription = form.watch((value) => {
-      const occupancyTypes = value.occupancyTypes || [];
-      const existingRoomMap = roomAvailability.reduce(
-        (acc, room) => {
-          acc[room.roomType] = room;
-          return acc;
-        },
-        {} as Record<string, RoomAvailability>,
-      );
+    fetchProperty();
+  }, [fetchProperty]);
 
-      const newRoomAvailability = occupancyTypes.map(
-        (type) =>
-          existingRoomMap[type] || {
-            roomType: type,
-            totalBeds: 1,
-            availableBeds: 1,
-            isActive: true,
-          },
-      );
-
-      setRoomAvailability(newRoomAvailability);
-    });
-
-    return () => subscription.unsubscribe();
-  }, [form.watch, roomAvailability]);
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length + images.length > 10) {
-      toast.error("Maximum 10 images allowed");
-      return;
-    }
-
-    files.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const url = e.target?.result as string;
-        setImages((prev) => [...prev, { url, isThumbnail: prev.length === 0 }]);
-      };
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const removeImage = (index: number) => {
-    setImages((prev) => {
-      const newImages = prev.filter((_, i) => i !== index);
-      if (prev[index].isThumbnail && newImages.length > 0) {
-        newImages[0].isThumbnail = true;
-      }
-      return newImages;
-    });
-  };
-
-  const setThumbnail = (index: number) => {
-    setImages((prev) =>
-      prev.map((img, i) => ({
-        ...img,
-        isThumbnail: i === index,
-      })),
-    );
-  };
-
-  const handleRoomUpdate = (updatedRooms: RoomAvailability[]) => {
+  const handleRoomUpdate = useCallback((updatedRooms: RoomAvailability[]) => {
     setRoomAvailability(updatedRooms);
-  };
+    form.setValue("rooms", updatedRooms.map((room) => ({
+      name: `${room.roomType} Room`,
+      roomNumber: `${room.roomType}-${room.totalBeds}`,
+      type: room.roomType,
+      price: room.totalBeds * 1000, // Default price calculation
+      capacity: room.totalBeds,
+      availableBeds: room.availableBeds,
+      isActive: room.isActive,
+      roomType: room.roomType,
+      totalBeds: room.totalBeds
+    })));
+  }, [form]);
 
-  const onSubmit = (values: FormValues) => {
-    setLoading(true);
+  const onSubmit = useCallback(async (values: FormSchema) => {
+    try {
+      setLoading(true);
 
-    // Transform form data to match the Property type
-    const propertyData: Partial<Property> = {
-      title: values.title,
-      description: values.description,
-      type: values.type,
-      location: values.location as PropertyLocationType,
-      price: values.price,
-      images: values.images,
-      amenities: values.amenities as Amenity[],
-      isActive: values.isActive,
-      bedrooms: values.bedrooms,
-      bathrooms: values.bathrooms,
-      area: values.area,
-      furnishingType: values.furnishingType,
-      gender: values.gender,
-      totalBeds: values.totalBeds,
-      ratings: values.ratings,
-      numReviews: values.numReviews,
-      rules: values.rules,
-      securityDeposit: values.securityDeposit,
-      availableFrom: values.availableFrom,
-      // These fields would be set by the backend
-      id: property?.id || '',
-      ownerId: property?.ownerId || 'current-user-id',
-      createdAt: property?.createdAt || new Date(),
-      updatedAt: new Date(),
-    };
+      const propertyData = {
+        name: values.name,
+        type: values.type,
+        description: values.description,
+        location: values.location,
+        TenantType: values.TenantType,
+        features: values.features,
+        latitude: values.latitude ?? undefined,
+        longitude: values.longitude ?? undefined,
+        securityDeposit: values.securityDeposit,
+        isActive: values.isActive,
+        foodIncluded: values.foodIncluded,
+        foodPrice: values.foodPrice ?? undefined,
+        bathroomType: values.bathroomType,
+        bhkType: values.bhkType,
+        furnishingType: values.furnishingType,
+        gender: values.gender,
+        images: images,
+        rooms: values.rooms.map((room) => ({
+          name: room.name,
+          roomNumber: room.roomNumber,
+          type: room.type,
+          price: room.price,
+          capacity: room.capacity,
+          availableBeds: room.availableBeds,
+          isActive: room.isActive
+        }))
+      };
 
-    // In a real app, you would send this to an API
-    console.log('Property data to submit:', propertyData);
-
-    setTimeout(() => {
+      if (isEditing && id) {
+        const result = await updateProperty(id, propertyData);
+        if (result.success) {
+          toast.success("Property updated successfully");
+          router.push("/dashboard");
+        } else {
+          toast.error(result.error || "Failed to update property");
+        }
+      } else {
+        const result = await createProperty(propertyData);
+        if (result.success) {
+          toast.success("Property created successfully");
+          router.push("/dashboard");
+        } else {
+          toast.error(result.error || "Failed to create property");
+        }
+      }
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      toast.error("An error occurred while submitting the form");
+    } finally {
       setLoading(false);
-      toast.success(
-        isEditing
-          ? "Property updated successfully!"
-          : "Property added successfully!",
-      );
-      router.push("/dashboard");
-    }, 1000);
-  };
-
-  if (isEditing && !property) {
-    return (
-      <div className="container py-8">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-center">Property Not Found</CardTitle>
-          </CardHeader>
-          <CardContent className="text-center">
-            <p>Sorry, we couldn't find the property you're looking for.</p>
-          </CardContent>
-          <CardFooter className="flex justify-center">
-            <Button onClick={() => router.push("/dashboard")}>
-              Return to Dashboard
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
-    );
-  }
+    }
+  }, [isEditing, id, images, router]);
 
   return (
     <div className="container py-8">
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl font-bold">
-            {isEditing ? "Edit Property" : "Add New Property"}
-          </CardTitle>
+          <CardTitle>{isEditing ? "Edit Property" : "Add New Property"}</CardTitle>
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
               <BasicPropertyDetails form={form} />
               <PropertyLocation form={form} />
-              <RoomDetails form={form} />
-              {form.watch("occupancyTypes")?.length > 0 && (
-                <RoomManagement
-                  roomAvailability={roomAvailability}
-                  onRoomUpdate={handleRoomUpdate}
-                />
-              )}
               <PropertyImageUpload
                 images={images}
-                onImageUpload={handleImageUpload}
-                onRemoveImage={removeImage}
-                onSetThumbnail={setThumbnail}
+                onChange={setImages}
+                maxFiles={10}
               />
               <PropertyAvailability form={form} />
-              <div className="flex justify-end space-x-4">
+              <RoomDetails form={form} />
+              <RoomManagement
+                propertyType={form.watch("type")}
+                roomAvailability={roomAvailability}
+                onUpdate={handleRoomUpdate}
+              />
+              <CardFooter className="flex justify-end gap-4 px-0">
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => router.push("/dashboard")}
+                  onClick={() => router.back()}
                 >
                   Cancel
                 </Button>
                 <Button type="submit" disabled={loading}>
-                  {loading
-                    ? "Saving..."
-                    : isEditing
-                      ? "Update Property"
-                      : "Add Property"}
+                  {loading ? "Saving..." : isEditing ? "Update Property" : "Create Property"}
                 </Button>
-              </div>
+              </CardFooter>
             </form>
           </Form>
         </CardContent>
