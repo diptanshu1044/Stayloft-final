@@ -43,30 +43,31 @@ import {
 // Form schema
 const formSchema = z.object({
   name: z.string().min(5, "Name must be at least 5 characters"),
-  type: z.nativeEnum(PropertyType),
+  type: z.enum(["FLAT", "PG", "HOSTEL"] as const),
   description: z.string().min(20, "Description must be at least 20 characters"),
   location: z.string().min(2, "Location is required"),
-  TenantType: z.nativeEnum(TenantType),
-  features: z.array(z.nativeEnum(Features)),
+  TenantType: z.enum(["BOYS", "GIRLS", "COED"] as const),
+  features: z.array(z.enum(["AC", "TV", "WIFI", "MESS", "LAUNDRY", "PARKING", "SECURITY", "IN_TIME"] as const)),
   latitude: z.number().nullable().optional(),
   longitude: z.number().nullable().optional(),
   securityDeposit: z.number().min(0),
   isActive: z.boolean().default(true),
   foodIncluded: z.boolean().default(false),
   foodPrice: z.number().nullable().optional(),
-  bathroomType: z.nativeEnum(BathroomType),
+  bathroomType: z.enum(["ATTACHED", "COMMON"] as const),
   bhkType: z.string().optional(),
-  furnishingType: z.nativeEnum(FurnishingType),
-  gender: z.nativeEnum(Gender).optional(),
+  furnishingType: z.enum(["FULLY_FURNISHED", "SEMI_FURNISHED", "UNFURNISHED"] as const),
+  gender: z.enum(["BOYS", "GIRLS", "COED"] as const).optional(),
+  images: z.array(z.string()).default([]),
   rooms: z.array(z.object({
-    type: z.nativeEnum(RoomType),
+    type: z.enum(["SINGLE", "DOUBLE", "TRIPLE", "BHK1", "BHK2", "BHK3", "CUSTOM"] as const),
     name: z.string(),
     roomNumber: z.string().optional(),
     price: z.number(),
     capacity: z.number(),
     availableBeds: z.number(),
     isActive: z.boolean(),
-    roomType: z.nativeEnum(RoomType),
+    roomType: z.enum(["SINGLE", "DOUBLE", "TRIPLE", "BHK1", "BHK2", "BHK3", "CUSTOM"] as const),
     totalBeds: z.number()
   }))
 });
@@ -75,21 +76,22 @@ type FormSchema = z.infer<typeof formSchema>;
 
 // Default values for the form
 const defaultValues: Partial<FormSchema> = {
-  type: PropertyType.PG,
+  type: "PG",
   name: "",
   description: "",
   location: "",
-  TenantType: TenantType.BOYS,
+  TenantType: "BOYS",
   features: [],
   securityDeposit: 0,
   isActive: true,
   foodIncluded: false,
   foodPrice: null,
-  bathroomType: BathroomType.ATTACHED,
-  furnishingType: FurnishingType.UNFURNISHED,
+  bathroomType: "ATTACHED",
+  furnishingType: "UNFURNISHED",
   gender: undefined,
   bhkType: undefined,
   rooms: [],
+  images: []
 };
 
 interface PropertyResponse {
@@ -143,8 +145,8 @@ const AddEditPropertyPage = () => {
   const [property, setProperty] = useState<Property | null>(null);
 
   const form = useForm<FormSchema>({
-    resolver: zodResolver(formSchema) as any,
-    defaultValues: defaultValues as FormSchema,
+    resolver: zodResolver(formSchema),
+    defaultValues,
     mode: "onChange"
   });
 
@@ -224,7 +226,8 @@ const AddEditPropertyPage = () => {
               isActive: room.isActive,
               roomType: room.type,
               totalBeds: room.capacity
-            }))
+            })),
+            images: propertyData.images || []
           });
         }
       } catch (error) {
@@ -274,7 +277,7 @@ const AddEditPropertyPage = () => {
         bhkType: values.bhkType,
         furnishingType: values.furnishingType,
         gender: values.gender,
-        images: images,
+        images: values.images,
         rooms: values.rooms.map((room) => ({
           name: room.name,
           roomNumber: room.roomNumber,
@@ -290,7 +293,11 @@ const AddEditPropertyPage = () => {
         const result = await updateProperty(id, propertyData);
         if (result.success) {
           toast.success("Property updated successfully");
-          router.push("/dashboard");
+          // Optimistic update
+          if (result.property) {
+            setProperty(result.property);
+            router.refresh(); // Refresh the page data
+          }
         } else {
           toast.error(result.error || "Failed to update property");
         }
@@ -298,7 +305,11 @@ const AddEditPropertyPage = () => {
         const result = await createProperty(propertyData);
         if (result.success) {
           toast.success("Property created successfully");
-          router.push("/dashboard");
+          // Optimistic update
+          if (result.property) {
+            router.refresh(); // Refresh the page data
+            router.push(`/property/${result.property.id}`); // Redirect to the new property page
+          }
         } else {
           toast.error(result.error || "Failed to create property");
         }
@@ -309,7 +320,7 @@ const AddEditPropertyPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [isEditing, id, images, router]);
+  }, [isEditing, id, router, setProperty]);
 
   return (
     <div className="container py-8">

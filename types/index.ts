@@ -26,32 +26,45 @@ export interface RoomAvailability {
 
 export interface Property {
   id: string;
-  title: string;
+  name: string;
   description: string;
-  type: "FLAT" | "PG" | "HOSTEL";
-  location: {
-    city: string;
-    area: string;
-  };
-  totalRooms: number;
-  occupancyTypes: string[];
-  prices: Record<string, number>;
-  bathroomType: "attached" | "common";
-  bhkType?: string;
-  gender: "boys" | "girls" | "coed";
+  type: PropertyType;
+  location: string;
+  TenantType: TenantType;
+  features: Features[];
+  latitude?: number | null;
+  longitude?: number | null;
   securityDeposit: number;
-  depositType: "amount" | "percentage";
-  hasBalcony: boolean;
-  hasAC: boolean;
-  foodIncluded: boolean;
-  foodPrice?: number;
   isActive: boolean;
-  amenities: string[];
-  images: {
-    url: string;
-    isThumbnail: boolean;
+  foodIncluded: boolean;
+  foodPrice?: number | null;
+  bathroomType: "ATTACHED" | "COMMON";
+  bhkType?: string;
+  furnishingType: "FULLY_FURNISHED" | "SEMI_FURNISHED" | "UNFURNISHED";
+  gender?: "BOYS" | "GIRLS" | "COED";
+  ownerId: string;
+  owner?: {
+    name: string;
+    image: string | null;
+  };
+  images: string[];
+  rooms: {
+    id: string;
+    type: RoomType;
+    name: string;
+    roomNumber: string | null;
+    price: number;
+    capacity: number;
+    availableBeds: number;
+    isActive: boolean;
   }[];
-  roomAvailability: RoomAvailability[];
+  Review?: {
+    id: string;
+    rating: number;
+    comment: string | null;
+  }[];
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface Room {

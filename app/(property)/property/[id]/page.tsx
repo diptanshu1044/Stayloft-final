@@ -1,9 +1,10 @@
 "use client";
 
 import { ReactNode, useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { getPropertyById } from "@/lib/MockData";
+import Image from "next/image";
+import { getProperty } from "@/actions/property.action";
 import { Property, Amenity } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +35,7 @@ import {
   Sparkles,
   User,
   Building,
+  Clock,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -43,497 +45,455 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { format } from "date-fns";
-import { useToast } from "@/hooks/useToast";
+import { toast } from "sonner";
+import { Features } from "@prisma/client";
 
-// Map amenity IDs to their corresponding icons
-const amenityIcons: Record<Amenity, ReactNode> = {
+// Map features to their corresponding icons
+const featureIcons: Record<Features, ReactNode> = {
   WIFI: <Wifi className="h-5 w-5" />,
   AC: <AirVent className="h-5 w-5" />,
-  FURNISHED: <Home className="h-5 w-5" />,
-  GEYSER: <ShowerHead className="h-5 w-5" />,
   TV: <Tv className="h-5 w-5" />,
-  FRIDGE: <Refrigerator className="h-5 w-5" />,
-  WASHING_MACHINE: <Sparkles className="h-5 w-5" />,
-  POWER_BACKUP: <CheckCircle className="h-5 w-5" />,
+  MESS: <Utensils className="h-5 w-5" />,
+  LAUNDRY: <Sparkles className="h-5 w-5" />,
   PARKING: <ParkingCircle className="h-5 w-5" />,
   SECURITY: <User className="h-5 w-5" />,
-  CCTV: <CheckCircle className="h-5 w-5" />,
-  LIFT: <Building className="h-5 w-5" />,
-  FOOD: <Utensils className="h-5 w-5" />,
-  CLEANING: <Sparkles className="h-5 w-5" />,
-  ATTACHED_BATHROOM: <Bath className="h-5 w-5" />,
-  GYM: <CheckCircle className="h-5 w-5" />,
-  KITCHEN: <Utensils className="h-5 w-5" />,
-  LAUNDRY: <Sparkles className="h-5 w-5" />,
-  STUDY_TABLE: <CheckCircle className="h-5 w-5" />,
-  SWIMMING_POOL: <CheckCircle className="h-5 w-5" />,
+  IN_TIME: <Clock className="h-5 w-5" />
 };
 
-// Convert amenity ID to display text
-const amenityLabels: Record<Amenity, string> = {
+// Convert feature enum to display text
+const featureLabels: Record<Features, string> = {
   WIFI: "WiFi",
   AC: "Air Conditioning",
-  FURNISHED: "Furnished",
-  GEYSER: "Hot Water",
   TV: "Television",
-  FRIDGE: "Refrigerator",
-  WASHING_MACHINE: "Washing Machine",
-  POWER_BACKUP: "Power Backup",
+  MESS: "Mess Facility",
+  LAUNDRY: "Laundry Service",
   PARKING: "Parking",
   SECURITY: "Security",
-  CCTV: "CCTV Surveillance",
-  LIFT: "Elevator Access",
-  FOOD: "Food Included",
-  CLEANING: "Cleaning Service",
-  ATTACHED_BATHROOM: "Attached Bathroom",
-  GYM: "Gym",
-  KITCHEN: "Kitchen",
-  LAUNDRY: "Laundry Service",
-  STUDY_TABLE: "Study Table",
-  SWIMMING_POOL: "Swimming Pool",
+  IN_TIME: "In-Time Rules"
 };
 
 const PropertyDetailPage = () => {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
   const [showContactForm, setShowContactForm] = useState(false);
-  const { toast } = useToast();
 
   useEffect(() => {
     // Scroll to top when component mounts
     window.scrollTo(0, 0);
 
-    // Simulate API fetch delay
-    setLoading(true);
-    setTimeout(() => {
-      if (id) {
-        const foundProperty = getPropertyById(id);
-        if (foundProperty) {
-          setProperty(foundProperty);
+    const fetchPropertyDetails = async () => {
+      setLoading(true);
+      try {
+        const response = await getProperty(id as string);
+        if (response.success && response.property) {
+          // Transform the response to match Property type with non-null values
+          const propertyData = {
+            id: response.property.id,
+            name: response.property.name,
+            description: response.property.description || "",
+            type: response.property.type,
+            location: response.property.location,
+            TenantType: response.property.TenantType,
+            features: response.property.features || [],
+            latitude: response.property.latitude || 0,
+            longitude: response.property.longitude || 0,
+            securityDeposit: response.property.securityDeposit,
+            isActive: response.property.isActive,
+            foodIncluded: response.property.foodIncluded,
+            foodPrice: response.property.foodPrice || 0,
+            bathroomType: response.property.bathroomType as "ATTACHED" | "COMMON",
+            bhkType: response.property.bhkType || "",
+            furnishingType: response.property.furnishingType as "FULLY_FURNISHED" | "SEMI_FURNISHED" | "UNFURNISHED",
+            gender: response.property.gender as "BOYS" | "GIRLS" | "COED",
+            ownerId: response.property.ownerId,
+            // Extract URLs from image objects if they exist, otherwise use empty array
+            images: ((response.property as any).images || []).map((img: any) =>
+              typeof img === 'string' ? img : img.url
+            ).filter(Boolean),
+            owner: response.property.owner || { name: '', image: null },
+            rooms: response.property.rooms.map(room => ({
+              id: room.id,
+              type: room.type,
+              name: room.name || "",
+              roomNumber: room.roomNumber || "",
+              price: room.price,
+              capacity: room.capacity,
+              availableBeds: room.availableBeds,
+              isActive: room.isActive
+            })) || [],
+            Review: response.property.Review || [],
+            createdAt: response.property.createdAt || new Date(),
+            updatedAt: response.property.updatedAt || new Date()
+          };
+          setProperty(propertyData);
+        } else {
+          toast.error("Failed to fetch property details");
+          router.push("/");
         }
+      } catch (error) {
+        console.error("Error fetching property:", error);
+        toast.error("An error occurred while fetching property details");
+        router.push("/");
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
-    }, 800);
-  }, [id]);
+    };
+
+    if (id) {
+      fetchPropertyDetails();
+    }
+  }, [id, router]);
 
   if (loading) {
     return (
-      <>
-        <div className="container py-8">
-          <div className="h-96 bg-gray-200 animate-pulse rounded-lg mb-8" />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="md:col-span-2 space-y-4">
-              <div className="h-10 bg-gray-200 animate-pulse rounded w-3/4" />
-              <div className="h-6 bg-gray-200 animate-pulse rounded w-1/2" />
-              <div className="h-4 bg-gray-200 animate-pulse rounded w-full" />
-              <div className="h-4 bg-gray-200 animate-pulse rounded w-full" />
-              <div className="h-4 bg-gray-200 animate-pulse rounded w-3/4" />
-            </div>
-            <div className="h-64 bg-gray-200 animate-pulse rounded" />
+      <div className="container py-8">
+        <div className="animate-pulse">
+          <div className="h-96 bg-gray-200 rounded-lg mb-8"></div>
+          <div className="space-y-4">
+            <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+            <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
           </div>
         </div>
-      </>
+      </div>
     );
   }
 
   if (!property) {
     return (
-      <>
-        <div className="container py-16 text-center">
+      <div className="container py-8">
+        <div className="text-center">
           <h2 className="text-2xl font-bold mb-4">Property Not Found</h2>
-          <p className="text-gray-600 mb-8">
-            Sorry, we couldn't find the property you're looking for.
+          <p className="text-gray-600 mb-4">
+            The property you're looking for doesn't exist or has been removed.
           </p>
-          <Button asChild>
-            <Link href="/">Return to Home</Link>
-          </Button>
+          <Button onClick={() => router.push("/")}>Go Back Home</Button>
         </div>
-      </>
+      </div>
     );
   }
 
-  const handleNextImage = () => {
+  const handlePrevImage = () => {
     setCurrentImageIndex((prev) =>
-      prev === property.images.length - 1 ? 0 : prev + 1,
+      prev === 0 ? property.images.length - 1 : prev - 1
     );
   };
 
-  const handlePrevImage = () => {
+  const handleNextImage = () => {
     setCurrentImageIndex((prev) =>
-      prev === 0 ? property.images.length - 1 : prev - 1,
+      prev === property.images.length - 1 ? 0 : prev + 1
     );
   };
 
   const toggleFavorite = () => {
     setIsFavorite(!isFavorite);
-    toast({
-      title: isFavorite ? "Removed from favorites" : "Added to favorites",
-      description: isFavorite
-        ? "This property has been removed from your favorites"
-        : "This property has been added to your favorites",
-    });
+    toast.success(
+      isFavorite
+        ? "Removed from favorites"
+        : "Added to favorites"
+    );
   };
 
-  const handleShare = () => {
-    if (navigator.share) {
-      navigator
-        .share({
-          title: property.title,
-          text: `Check out this property: ${property.title}`,
-          url: window.location.href,
-        })
-        .catch((error) => console.log("Error sharing", error));
-    } else {
-      // Fallback - copy to clipboard
-      navigator.clipboard.writeText(window.location.href);
-      toast({
-        title: "Link copied to clipboard",
-        description: "You can now share this property with others",
+  const handleShare = async () => {
+    try {
+      await navigator.share({
+        title: property.name,
+        text: property.description,
+        url: window.location.href,
       });
+    } catch (error) {
+      // Fallback to copying to clipboard
+      navigator.clipboard.writeText(window.location.href);
+      toast.success("Link copied to clipboard");
     }
   };
 
   const handleContactOwner = (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "Message sent!",
-      description: "The property owner will get back to you soon.",
-    });
+    // Implement contact owner functionality
+    toast.success("Message sent successfully");
     setShowContactForm(false);
   };
 
   return (
-    <>
-      {/* Breadcrumb */}
-      <div className="bg-gray-50 py-3 border-b">
-        <div className="container">
-          <div className="flex items-center text-sm text-gray-600">
-            <Link href="/" className="hover:text-primary">
-              Home
-            </Link>
-            <span className="mx-2">/</span>
-            <Link
-              href={`/${property.type === "FLAT" ? "flats" : property.type === "PG" ? "pgs" : "hostels"}`}
-              className="hover:text-primary"
-            >
-              {property.type === "FLAT"
-                ? "Flats"
-                : property.type === "PG"
-                  ? "PGs"
-                  : "Hostels"}
-            </Link>
-            <span className="mx-2">/</span>
-            <span className="text-gray-800 font-medium truncate">
-              {property.title}
-            </span>
+    <div className="container py-8">
+      {/* Image Gallery */}
+      <div className="relative h-[500px] mb-8 rounded-lg overflow-hidden">
+        {property.images && property.images.length > 0 ? (
+          <>
+            <Image
+              src={property.images[currentImageIndex]}
+              alt={`Property image ${currentImageIndex + 1}`}
+              fill
+              className="object-cover"
+              priority
+            />
+            {property.images.length > 1 && (
+              <>
+                <button
+                  onClick={handlePrevImage}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/50 text-white hover:bg-black/70"
+                  aria-label="Previous image"
+                >
+                  <ChevronLeft className="h-6 w-6" />
+                </button>
+                <button
+                  onClick={handleNextImage}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/50 text-white hover:bg-black/70"
+                  aria-label="Next image"
+                >
+                  <ChevronRight className="h-6 w-6" />
+                </button>
+              </>
+            )}
+          </>
+        ) : (
+          <div className="h-full w-full bg-gray-200 flex items-center justify-center">
+            <Home className="h-12 w-12 text-gray-400" />
           </div>
-        </div>
+        )}
       </div>
 
-      <div className="container py-8">
-        {/* Property Images */}
-        <div className="relative mb-8 bg-gray-100 rounded-lg overflow-hidden">
-          <div className="h-96">
-            <img
-              src={property.images[currentImageIndex]?.url}
-              alt={property.title}
-              className="w-full h-full object-cover"
-            />
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Property Details */}
+        <div className="lg:col-span-2">
+          <div className="flex items-center justify-between mb-2">
+            <Badge
+              className={
+                property.type === "FLAT"
+                  ? "bg-blue-100 text-blue-800 border-blue-200"
+                  : property.type === "PG"
+                    ? "bg-purple-100 text-purple-800 border-purple-200"
+                    : "bg-green-100 text-green-800 border-green-200"
+              }
+            >
+              {property.type === "FLAT"
+                ? "Flat"
+                : property.type === "PG"
+                  ? "PG"
+                  : "Hostel"}
+            </Badge>
 
-          <button
-            onClick={handlePrevImage}
-            className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white/80 p-2 rounded-full hover:bg-white shadow-xs"
-            aria-label="Previous image"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-
-          <button
-            onClick={handleNextImage}
-            className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white/80 p-2 rounded-full hover:bg-white shadow-xs"
-            aria-label="Next image"
-          >
-            <ChevronRight className="h-5 w-5" />
-          </button>
-
-          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white/80 px-3 py-1 rounded-full text-sm">
-            {currentImageIndex + 1} / {property.images.length}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Property Details */}
-          <div className="lg:col-span-2">
-            <div className="flex items-center justify-between mb-2">
-              <Badge
-                className={
-                  property.type === "FLAT"
-                    ? "bg-blue-100 text-blue-800 border-blue-200"
-                    : property.type === "PG"
-                      ? "bg-purple-100 text-purple-800 border-purple-200"
-                      : "bg-green-100 text-green-800 border-green-200"
+            <div className="flex items-center gap-3">
+              <button
+                onClick={toggleFavorite}
+                className={`p-2 rounded-full ${isFavorite
+                  ? "bg-red-50 text-red-500"
+                  : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                  }`}
+                aria-label={
+                  isFavorite ? "Remove from favorites" : "Add to favorites"
                 }
               >
-                {property.type === "FLAT"
-                  ? "Flat"
-                  : property.type === "PG"
-                    ? "PG"
-                    : "Hostel"}
-              </Badge>
+                <Heart
+                  className={`h-5 w-5 ${isFavorite ? "fill-current" : ""}`}
+                />
+              </button>
 
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={toggleFavorite}
-                  className={`p-2 rounded-full ${isFavorite
-                      ? "bg-red-50 text-red-500"
-                      : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                    }`}
-                  aria-label={
-                    isFavorite ? "Remove from favorites" : "Add to favorites"
-                  }
-                >
-                  <Heart
-                    className={`h-5 w-5 ${isFavorite ? "fill-current" : ""}`}
-                  />
-                </button>
-
-                <button
-                  onClick={handleShare}
-                  className="p-2 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200"
-                  aria-label="Share property"
-                >
-                  <Share className="h-5 w-5" />
-                </button>
-              </div>
+              <button
+                onClick={handleShare}
+                className="p-2 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200"
+                aria-label="Share property"
+              >
+                <Share className="h-5 w-5" />
+              </button>
             </div>
-
-            <h1 className="text-2xl md:text-3xl font-bold mb-2">
-              {property.title}
-            </h1>
-
-            <div className="flex items-center text-gray-600 mb-4">
-              <MapPin className="h-4 w-4 mr-1" />
-              <span>
-                {property.location.address}, {property.location.city}
-              </span>
-            </div>
-
-            {property.ratings && (
-              <div className="flex items-center gap-1 mb-4">
-                <div className="bg-green-100 text-green-800 px-2 py-1 rounded flex items-center">
-                  <Star className="h-4 w-4 fill-green-800 mr-1" />
-                  <span className="font-medium">
-                    {property.ratings.toFixed(1)}
-                  </span>
-                </div>
-                <span className="text-gray-600">
-                  ({property.numReviews} reviews)
-                </span>
-              </div>
-            )}
-
-            <div className="flex flex-wrap items-center gap-6 mb-6 py-4 border-y">
-              {property.type === "FLAT" ? (
-                <>
-                  {property.bedrooms && (
-                    <div className="flex items-center gap-2">
-                      <Bed className="h-5 w-5 text-gray-600" />
-                      <div>
-                        <p className="font-medium">{property.bedrooms}</p>
-                        <p className="text-sm text-gray-500">Bedrooms</p>
-                      </div>
-                    </div>
-                  )}
-                  {property.bathrooms && (
-                    <div className="flex items-center gap-2">
-                      <Bath className="h-5 w-5 text-gray-600" />
-                      <div>
-                        <p className="font-medium">{property.bathrooms}</p>
-                        <p className="text-sm text-gray-500">Bathrooms</p>
-                      </div>
-                    </div>
-                  )}
-                  {property.area && (
-                    <div className="flex items-center gap-2">
-                      <Home className="h-5 w-5 text-gray-600" />
-                      <div>
-                        <p className="font-medium">{property.area} sq.ft</p>
-                        <p className="text-sm text-gray-500">Area</p>
-                      </div>
-                    </div>
-                  )}
-                  {property.furnishingType && (
-                    <div className="flex items-center gap-2">
-                      <Home className="h-5 w-5 text-gray-600" />
-                      <div>
-                        <p className="font-medium">
-                          {property.furnishingType.replace("_", " ")}
-                        </p>
-                        <p className="text-sm text-gray-500">Furnishing</p>
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <>
-                  {property.gender && (
-                    <div className="flex items-center gap-2">
-                      <User className="h-5 w-5 text-gray-600" />
-                      <div>
-                        <p className="font-medium">
-                          {property.gender.charAt(0) +
-                            property.gender.slice(1).toLowerCase()}
-                        </p>
-                        <p className="text-sm text-gray-500">Accommodation</p>
-                      </div>
-                    </div>
-                  )}
-                  {property.totalBeds && (
-                    <div className="flex items-center gap-2">
-                      <Bed className="h-5 w-5 text-gray-600" />
-                      <div>
-                        <p className="font-medium">{property.totalBeds}</p>
-                        <p className="text-sm text-gray-500">Total Beds</p>
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-              <div className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-gray-600" />
-                <div>
-                  <p className="font-medium">
-                    {format(property.availableFrom || "", "MMM d, yyyy")}
-                  </p>
-                  <p className="text-sm text-gray-500">Available From</p>
-                </div>
-              </div>
-            </div>
-
-            <Tabs defaultValue="description">
-              <TabsList className="mb-6">
-                <TabsTrigger value="description">Description</TabsTrigger>
-                <TabsTrigger value="amenities">Amenities</TabsTrigger>
-                <TabsTrigger value="rules">Rules</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="description" className="space-y-4">
-                <p className="text-gray-700">{property.description}</p>
-
-                <div>
-                  <h3 className="font-semibold text-lg mb-2">
-                    Location Details
-                  </h3>
-                  <p className="text-gray-700">
-                    {property.location.address}, {property.location.city},{" "}
-                    {property.location.state} - {property.location.pincode}
-                  </p>
-                </div>
-
-                {property.type === "FLAT" && (
-                  <div>
-                    <h3 className="font-semibold text-lg mb-2">
-                      Property Details
-                    </h3>
-                    <ul className="list-disc list-inside space-y-1 text-gray-700">
-                      <li>{property.bedrooms} Bedroom(s)</li>
-                      <li>{property.bathrooms} Bathroom(s)</li>
-                      <li>{property.area} sq.ft Area</li>
-                      <li>
-                        {property.furnishingType?.replace("_", " ")} Property
-                      </li>
-                    </ul>
-                  </div>
-                )}
-
-                {(property.type === "PG" || property.type === "HOSTEL") && (
-                  <div>
-                    <h3 className="font-semibold text-lg mb-2">
-                      Accommodation Details
-                    </h3>
-                    <ul className="list-disc list-inside space-y-1 text-gray-700">
-                      <li>
-                        {property.gender === "MALE"
-                          ? "Male Only"
-                          : property.gender === "FEMALE"
-                            ? "Female Only"
-                            : "Co-ed"}{" "}
-                        Accommodation
-                      </li>
-                      <li>Total {property.totalBeds} beds available</li>
-                    </ul>
-                  </div>
-                )}
-              </TabsContent>
-
-              <TabsContent value="amenities">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {property.amenities.map((amenity) => (
-                    <div
-                      key={amenity}
-                      className="flex items-center gap-2 p-3 rounded-lg border bg-gray-50"
-                    >
-                      <div className="text-primary">
-                        {amenityIcons[amenity]}
-                      </div>
-                      <span>{amenityLabels[amenity]}</span>
-                    </div>
-                  ))}
-                </div>
-              </TabsContent>
-
-              <TabsContent value="rules">
-                {property.rules && property.rules.length > 0 ? (
-                  <ul className="space-y-2">
-                    {property.rules.map((rule, index) => (
-                      <li key={index} className="flex items-start gap-2">
-                        <CheckCircle className="h-5 w-5 text-primary mt-0.5" />
-                        <span>{rule}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-gray-600">No specific rules provided.</p>
-                )}
-              </TabsContent>
-            </Tabs>
           </div>
 
-          {/* Pricing and Contact Card */}
-          <div>
-            <div className="bg-white border rounded-lg shadow-xs p-6 sticky top-24">
-              <div className="mb-4">
-                <span className="text-2xl font-bold text-primary">
-                  ₹{property.price.toLocaleString("en-IN")}
-                </span>
-                <span className="text-gray-600">/month</span>
+          <h1 className="text-2xl md:text-3xl font-bold mb-2">
+            {property.name}
+          </h1>
+
+          <div className="flex items-center gap-2 text-gray-600 mb-4">
+            <MapPin className="h-4 w-4" />
+            <span>{property.location}</span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-6 mb-6 py-4 border-y">
+            {property.type === "FLAT" ? (
+              <>
+                {property.bhkType && (
+                  <div className="flex items-center gap-2">
+                    <Bed className="h-5 w-5 text-gray-600" />
+                    <div>
+                      <p className="font-medium">{property.bhkType}</p>
+                      <p className="text-sm text-gray-500">Type</p>
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <Bath className="h-5 w-5 text-gray-600" />
+                  <div>
+                    <p className="font-medium">{property.bathroomType}</p>
+                    <p className="text-sm text-gray-500">Bathroom</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Home className="h-5 w-5 text-gray-600" />
+                  <div>
+                    <p className="font-medium">{property.furnishingType.replace("_", " ")}</p>
+                    <p className="text-sm text-gray-500">Furnishing</p>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-2">
+                  <User className="h-5 w-5 text-gray-600" />
+                  <div>
+                    <p className="font-medium">{property.TenantType}</p>
+                    <p className="text-sm text-gray-500">Tenant Type</p>
+                  </div>
+                </div>
+                {property.foodIncluded && (
+                  <div className="flex items-center gap-2">
+                    <Utensils className="h-5 w-5 text-gray-600" />
+                    <div>
+                      <p className="font-medium">Food Included</p>
+                      <p className="text-sm text-gray-500">
+                        {property.foodPrice ? `₹${property.foodPrice}/month` : "Free"}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <DoorClosed className="h-5 w-5 text-gray-600" />
+                  <div>
+                    <p className="font-medium">{property.bathroomType}</p>
+                    <p className="text-sm text-gray-500">Bathroom Type</p>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          <Tabs defaultValue="description">
+            <TabsList className="mb-6">
+              <TabsTrigger value="description">Description</TabsTrigger>
+              <TabsTrigger value="features">Features</TabsTrigger>
+              <TabsTrigger value="rooms">Rooms</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="description" className="space-y-4">
+              <p className="text-gray-700">{property.description}</p>
+
+              <div>
+                <h3 className="font-semibold text-lg mb-2">Location Details</h3>
+                <p className="text-gray-700">{property.location}</p>
               </div>
 
-              {property.securityDeposit && (
-                <div className="flex items-center text-gray-600 mb-4">
-                  <span>Security Deposit: </span>
-                  <span className="font-medium ml-1">
-                    ₹{property.securityDeposit.toLocaleString("en-IN")}
-                  </span>
+              {property.type === "FLAT" && (
+                <div>
+                  <h3 className="font-semibold text-lg mb-2">Property Details</h3>
+                  <ul className="list-disc list-inside space-y-1 text-gray-700">
+                    <li>{property.bhkType} Apartment</li>
+                    <li>{property.bathroomType} Bathroom</li>
+                    <li>{property.furnishingType.replace("_", " ")} Property</li>
+                  </ul>
                 </div>
               )}
 
-              <Button
-                className="w-full mb-3"
-                onClick={() => setShowContactForm(!showContactForm)}
-              >
-                <MessageSquare className="mr-2 h-5 w-5" />
-                Contact Owner
-              </Button>
+              {(property.type === "PG" || property.type === "HOSTEL") && (
+                <div>
+                  <h3 className="font-semibold text-lg mb-2">Accommodation Details</h3>
+                  <ul className="list-disc list-inside space-y-1 text-gray-700">
+                    <li>{property.TenantType} Accommodation</li>
+                    <li>
+                      {property.foodIncluded
+                        ? `Food Included (${property.foodPrice
+                          ? `₹${property.foodPrice}/month`
+                          : "Free"
+                        })`
+                        : "Food Not Included"}
+                    </li>
+                    <li>{property.bathroomType} Bathrooms</li>
+                  </ul>
+                </div>
+              )}
+            </TabsContent>
 
-              <Button variant="outline" className="w-full">
-                <Phone className="mr-2 h-5 w-5" />
-                Request Callback
-              </Button>
+            <TabsContent value="features">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {property.features.map((feature) => (
+                  <div
+                    key={feature}
+                    className="flex items-center gap-2 p-3 rounded-lg border bg-gray-50"
+                  >
+                    <div className="text-primary">
+                      {featureIcons[feature]}
+                    </div>
+                    <span>{featureLabels[feature]}</span>
+                  </div>
+                ))}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="rooms">
+              <div className="space-y-4">
+                {property.rooms.map((room) => (
+                  <div
+                    key={room.id}
+                    className="p-4 border rounded-lg bg-gray-50"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium">{room.name}</h4>
+                      <Badge
+                        variant={room.isActive ? "default" : "secondary"}
+                      >
+                        {room.isActive ? "Available" : "Occupied"}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <p className="text-gray-500">Room Type</p>
+                        <p className="font-medium">{room.type}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Price</p>
+                        <p className="font-medium">₹{room.price}/month</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Capacity</p>
+                        <p className="font-medium">
+                          {room.availableBeds} of {room.capacity} beds available
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        {/* Sidebar */}
+        <div className="lg:col-span-1">
+          <div className="sticky top-8">
+            <div className="bg-gray-50 p-6 rounded-lg mb-6">
+              <div className="mb-4">
+                <p className="text-2xl font-bold text-primary">
+                  ₹{property.securityDeposit.toLocaleString()}
+                </p>
+                <p className="text-gray-600">Security Deposit</p>
+              </div>
+
+              <div className="space-y-4">
+                <Button
+                  onClick={() => setShowContactForm(true)}
+                  className="w-full"
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Contact Owner
+                </Button>
+                <Button variant="outline" className="w-full">
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Schedule Visit
+                </Button>
+              </div>
 
               {showContactForm && (
                 <form
@@ -556,36 +516,34 @@ const PropertyDetailPage = () => {
                   </Button>
                 </form>
               )}
+            </div>
 
-              <div className="mt-6">
-                <Accordion type="single" collapsible>
-                  <AccordionItem value="item-1">
-                    <AccordionTrigger>Safety Information</AccordionTrigger>
-                    <AccordionContent>
-                      <p className="text-sm text-gray-600 mb-2">
-                        All our properties are verified by our team to ensure
-                        accuracy and quality. However, we recommend:
-                      </p>
-                      <ul className="text-sm text-gray-600 list-disc list-inside space-y-1">
-                        <li>Verify property details in person</li>
-                        <li>
-                          Don't make payments without viewing/confirming
-                          property
-                        </li>
-                        <li>
-                          Report suspicious activity to our customer support
-                          team
-                        </li>
-                      </ul>
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
+            <div className="bg-gray-50 p-6 rounded-lg">
+              <h3 className="font-semibold mb-4">About the Owner</h3>
+              <div className="flex items-center gap-4 mb-4">
+                {property.owner?.image ? (
+                  <Image
+                    src={property.owner.image}
+                    alt={property.owner.name}
+                    width={48}
+                    height={48}
+                    className="rounded-full"
+                  />
+                ) : (
+                  <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
+                    <User className="h-6 w-6 text-gray-400" />
+                  </div>
+                )}
+                <div>
+                  <p className="font-medium">{property.owner?.name}</p>
+                  <p className="text-sm text-gray-500">Property Owner</p>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 

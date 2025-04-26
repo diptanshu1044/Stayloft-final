@@ -79,6 +79,9 @@ export async function createProperty(propertyData: {
   foodPrice?: number;
   bathroomType: string;
   bhkType?: string;
+  furnishingType: string;
+  gender?: string;
+  images?: string[];
   rooms: {
     name: string;
     roomNumber?: string;
@@ -122,6 +125,8 @@ export async function createProperty(propertyData: {
         foodPrice: propertyData.foodPrice,
         bathroomType: propertyData.bathroomType,
         bhkType: propertyData.bhkType,
+        furnishingType: propertyData.furnishingType,
+        gender: propertyData.gender,
         ownerId: user.id,
         rooms: {
           create: propertyData.rooms.map((room) => ({
@@ -148,7 +153,9 @@ export async function createProperty(propertyData: {
     });
 
     // Revalidate all relevant paths
+    revalidatePath("/");
     revalidatePath("/dashboard");
+    revalidatePath("/property");
     revalidatePath(`/property/${property.id}`);
 
     return { success: true, property };
